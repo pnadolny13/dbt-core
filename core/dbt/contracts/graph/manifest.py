@@ -23,6 +23,7 @@ from typing import (
 )
 from typing_extensions import Protocol
 
+from dbt import deprecations
 from dbt import tracking
 from dbt.contracts.graph.nodes import (
     BaseNode,
@@ -570,11 +571,29 @@ M = TypeVar("M", bound=MacroCandidate)
 
 
 class CandidateList(List[M]):
-    def last(self) -> Optional[Macro]:
+    def last_candidate(
+        self, valid_localities: Optional[List[Locality]] = None
+    ) -> Optional[MacroCandidate]:
+        """
+        Obtain the last (highest precedence) MacroCandidate from the CandidateList of any locality in valid_localities.
+        If valid_localities is not specified, return the last MacroCandidate of any locality.
+        """
         if not self:
             return None
         self.sort()
-        return self[-1].macro
+
+        if valid_localities is None:
+            return self[-1]
+
+        for candidate in reversed(self):
+            if candidate.locality in valid_localities:
+                return candidate
+
+        return None
+
+    def last(self) -> Optional[Macro]:
+        last_candidate = self.last_candidate()
+        return last_candidate.macro if last_candidate is not None else None
 
 
 def _get_locality(macro: Macro, root_project_name: str, internal_packages: Set[str]) -> Locality:
@@ -930,7 +949,33 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 for specificity, atype in enumerate(self._get_parent_adapter_types(adapter_type))
             )
         )
-        return candidates.last()
+        core_candidates = [
+            candidate for candidate in candidates if candidate.locality == Locality.Core
+        ]
+
+        materialization_candidate = candidates.last_candidate()
+        # If an imported materialization macro was found that also had a core candidate, fire a deprecation
+        if (
+            materialization_candidate is not None
+            and materialization_candidate.locality == Locality.Imported
+            and core_candidates
+        ):
+            # preserve legacy behaviour - allow materialization override
+            if (
+                get_flags().require_explicit_package_overrides_for_builtin_materializations
+                is False
+            ):
+                deprecations.warn(
+                    "package-materialization-override",
+                    package_name=materialization_candidate.macro.package_name,
+                    materialization_name=materialization_name,
+                )
+            else:
+                materialization_candidate = candidates.last_candidate(
+                    valid_localities=[Locality.Core, Locality.Root]
+                )
+
+        return materialization_candidate.macro if materialization_candidate else None
 
     def get_resource_fqns(self) -> Mapping[str, PathSet]:
         resource_fqns: Dict[str, Set[Tuple[str, ...]]] = {}
