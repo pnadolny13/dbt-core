@@ -1036,47 +1036,6 @@ class ManifestLoader:
         query_header_context = generate_query_header_context(adapter.config, macro_manifest)
         self.macro_hook(query_header_context)
 
-    # This creates a MacroManifest which contains the macros in
-    # the adapter. Only called by the load_macros call from the
-    # adapter.
-    def create_macro_manifest(self):
-        for project in self.all_projects.values():
-            # what is the manifest passed in actually used for?
-            macro_parser = MacroParser(project, self.manifest)
-            for path in macro_parser.get_paths():
-                source_file = load_source_file(path, ParseFileType.Macro, project.project_name, {})
-                block = FileBlock(source_file)
-                # This does not add the file to the manifest.files,
-                # but that shouldn't be necessary here.
-                macro_parser.parse_file(block)
-        macro_manifest = MacroManifest(self.manifest.macros)
-        return macro_manifest
-
-    # This is called by the adapter code only, to create the
-    # MacroManifest that's stored in the adapter.
-    # 'get_full_manifest' uses a persistent ManifestLoader while this
-    # creates a temporary ManifestLoader and throws it away.
-    # Not sure when this would actually get used except in tests.
-    # The ManifestLoader loads macros with other files, then copies
-    # into the adapter MacroManifest.
-    @classmethod
-    def load_macros(
-        cls,
-        root_config: RuntimeConfig,
-        macro_hook: Callable[[Manifest], Any],
-        base_macros_only=False,
-    ) -> Manifest:
-        # base_only/base_macros_only: for testing only,
-        # allows loading macros without running 'dbt deps' first
-        projects = root_config.load_dependencies(base_only=base_macros_only)
-
-        # This creates a loader object, including result,
-        # and then throws it away, returning only the
-        # manifest
-        loader = cls(root_config, projects, macro_hook)
-
-        return loader.create_macro_manifest()
-
     # Create tracking event for saving performance info
     def track_project_load(self):
         invocation_id = get_invocation_id()
