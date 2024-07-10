@@ -1257,7 +1257,7 @@ class ManifestLoader:
         for exposure in self.manifest.exposures.values():
             if exposure.created_at < self.started_at:
                 continue
-            _process_sources_for_exposure(self.manifest, current_project, exposure)
+            _process_sources_for_exposure(self.manifest, current_project, exposure, dependencies)
 
     # Loops through all nodes, for each element in
     # 'unit_test' array finds the node and updates the
@@ -1793,7 +1793,12 @@ def remove_dependent_project_references(manifest, external_node_unique_id):
         node.created_at = time.time()
 
 
-def _process_sources_for_exposure(manifest: Manifest, current_project: str, exposure: Exposure):
+def _process_sources_for_exposure(
+    manifest: Manifest,
+    current_project: str,
+    exposure: Exposure,
+    dependencies: Optional[Mapping[str, Project]],
+):
     target_source: Optional[Union[Disabled, SourceDefinition]] = None
     for source_name, table_name in exposure.sources:
         target_source = manifest.resolve_source(
@@ -1811,6 +1816,21 @@ def _process_sources_for_exposure(manifest: Manifest, current_project: str, expo
                 disabled=(isinstance(target_source, Disabled)),
             )
             continue
+
+        if manifest.is_invalid_private_source(exposure, target_source):
+            raise dbt.exceptions.DbtReferenceError(
+                unique_id=exposure.unique_id,
+                ref_unique_id=target_source.unique_id,
+                access=AccessType.Private,
+                scope=dbt_common.utils.cast_to_str(target_source.group),
+            )
+        elif manifest.is_invalid_protected_source(exposure, target_source, dependencies):
+            raise dbt.exceptions.DbtReferenceError(
+                unique_id=exposure.unique_id,
+                ref_unique_id=target_source.unique_id,
+                access=AccessType.Protected,
+                scope=exposure.package_name,
+            )
         target_source_id = target_source.unique_id
         exposure.depends_on.add_node(target_source_id)
 
