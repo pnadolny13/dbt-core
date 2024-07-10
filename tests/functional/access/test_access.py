@@ -25,6 +25,14 @@ models:
     group: analytics
 """
 
+invalid_access_source_yml = """
+sources:
+  - name: my_source
+    access: invalid
+    tables:
+      - name: my_table
+"""
+
 non_grouped_source_yml = """
 sources:
   - name: my_source
@@ -351,6 +359,11 @@ class TestAccess:
         # verify it works again
         manifest = run_dbt(["parse"])
         assert len(manifest.nodes) == 3
+
+        # add source with invalid access
+        write_file(invalid_access_source_yml, project.project_root, "models", "my_source.yml")
+        with pytest.raises(InvalidAccessTypeError):
+            run_dbt(["parse"])
 
         # add source without group, new model in group analytics that depends on it
         write_file(non_grouped_source_yml, project.project_root, "models", "my_source.yml")

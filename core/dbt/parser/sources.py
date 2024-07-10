@@ -27,6 +27,7 @@ from dbt.contracts.graph.unparsed import (
     UnparsedSourceTableDefinition,
 )
 from dbt.events.types import FreshnessConfigProblem, UnusedTables
+from dbt.exceptions import InvalidAccessTypeError
 from dbt.node_types import NodeType
 from dbt.parser.common import ParserRef
 from dbt.parser.schema_generic_tests import SchemaGenericTestParser
@@ -129,7 +130,18 @@ class SourcePatcher:
         description = table.description or ""
         source_description = source.description or ""
         group = source.group or None
-        access = AccessType(source.access) if source.access else AccessType.Protected
+        access = AccessType.Protected
+        # make sure sources are not public and are a valid access type
+        if source.access:
+            if (
+                not AccessType.is_valid(source.access)
+                or AccessType(source.access) == AccessType.Public
+            ):
+                raise InvalidAccessTypeError(
+                    unique_id=unique_id,
+                    field_value=source.access,
+                )
+            access = AccessType(source.access)
 
         # We need to be able to tell the difference between explicitly setting the loaded_at_field to None/null
         # and when it's simply not set.  This allows a user to override the source level loaded_at_field so that
