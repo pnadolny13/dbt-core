@@ -129,7 +129,7 @@ class SourcePatcher:
         description = table.description or ""
         source_description = source.description or ""
         group = source.group or None
-        access = AccessType[source.access] if source.access else AccessType.Protected
+        access = AccessType(source.access) if source.access else AccessType.Protected
 
         # We need to be able to tell the difference between explicitly setting the loaded_at_field to None/null
         # and when it's simply not set.  This allows a user to override the source level loaded_at_field so that
