@@ -314,6 +314,13 @@ class BaseContext(metaclass=ContextMeta):
         env = get_invocation_context().env
         if var in env:
             return_value = env[var]
+        elif os.name == "nt":
+            # Windows env vars are not case-sensitive
+            # So if there isn't an exact match, try a case-insensitive match
+            for key in env:
+                if var.casefold() == key.casefold():
+                    return_value = env[key]
+                    break
         elif default is not None:
             return_value = default
 

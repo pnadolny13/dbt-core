@@ -54,6 +54,8 @@ class TestEnvVars:
 
         assert ctx["lowercase"] == "dan"
 
+        # Windows env-vars are not case-sensitive, but Linux/macOS ones are
+        # So on Windows, the uppercase and mixedcase vars should also resolve to "dan"
         if os.name == "nt":
             assert ctx["uppercase"] == "dan"
             assert ctx["mixedcase"] == "dan"
