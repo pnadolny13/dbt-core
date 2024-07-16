@@ -49,5 +49,8 @@ def exclusive_primary_alt_value_setting(
             f"Only `{alt}` or `{primary}` can be specified{where}, not both"
         )
 
-    if alt_options:
-        dictionary[primary] = alt_options
+    if alt in dictionary:
+        alt_value = dictionary.pop(alt)
+        if alt_value is None:
+            alt_value = []
+        dictionary[primary] = alt_value
