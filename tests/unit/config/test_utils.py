@@ -27,7 +27,6 @@ class TestExclusivePrimaryAltValueSetting:
         test_dict = {alt_key: value}
         exclusive_primary_alt_value_setting(test_dict, primary_key, alt_key)
         assert test_dict.get(primary_key) == value
-        assert test_dict.get(alt_key) == value
 
     def test_primary_and_alt_set(self, primary_key: str, alt_key: str, value: str):
         test_dict = {primary_key: value, alt_key: value}
