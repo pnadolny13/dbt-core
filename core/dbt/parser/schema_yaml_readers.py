@@ -435,6 +435,9 @@ class MetricParser(YamlReader):
             label=unparsed.label,
             type=MetricType(unparsed.type),
             type_params=self._get_metric_type_params(unparsed),
+            time_granularity=(
+                TimeGranularity(unparsed.time_granularity) if unparsed.time_granularity else None
+            ),
             filter=parse_where_filter(unparsed.filter),
             meta=unparsed.meta,
             tags=unparsed.tags,
