@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from dbt.clients import yaml_helper
 from dbt.events.types import InvalidOptionYAML
@@ -24,33 +24,36 @@ def parse_cli_yaml_string(var_string: str, cli_option_name: str) -> Dict[str, An
         raise
 
 
-def exclusive_primary_alt_value_setting(
-    dictionary: Optional[Dict[str, Any]],
-    primary: str,
-    alt: str,
-    parent_config: Optional[str] = None,
+def normalize_warn_error_options(
+    dictionary: Dict[str, Any],
 ) -> None:
-    """Munges in place under the primary the options for the primary and alt values
+    """Fixes fields for warn_error_options from yaml format to fields
+    expected by the WarnErrorOptions class.
+    'error' => 'include', 'warn' => 'exclude'
 
-    Sometimes we allow setting something via TWO keys, but not at the same time. If both the primary
-    key and alt key have values, an error gets raised. If the alt key has values, then we update
-    the dictionary to ensure the primary key contains the values. If neither are set, nothing happens.
+    Also validates that two different forms of accepted keys are not
+    both provided.
     """
 
-    if dictionary is None:
-        return
-
-    primary_options = dictionary.get(primary)
-    alt_options = dictionary.get(alt)
-
-    if primary_options and alt_options:
-        where = f" in `{parent_config}`" if parent_config is not None else ""
+    if "include" in dictionary and "error" in dictionary:
         raise DbtExclusivePropertyUseError(
-            f"Only `{alt}` or `{primary}` can be specified{where}, not both"
+            "Only `error` or `include` can be specified in `warn_error_options`, not both"
         )
 
-    if alt in dictionary:
-        alt_value = dictionary.pop(alt)
-        if alt_value is None:
-            alt_value = []
-        dictionary[primary] = alt_value
+    if "warn" in dictionary and "exclude" in dictionary:
+        raise DbtExclusivePropertyUseError(
+            "Only `warn` or `exclude` can be specified in `warn_error_options`, not both"
+        )
+
+    convert = {
+        "error": "include",
+        "warn": "exclude",
+    }
+    for key in list(convert.keys()):
+        if key in dictionary:
+            value = dictionary.pop(key)
+            if value is None:
+                value = []
+            dictionary[convert[key]] = value
+    if "silence" in dictionary and dictionary["silence"] is None:
+        dictionary["silence"] = []
