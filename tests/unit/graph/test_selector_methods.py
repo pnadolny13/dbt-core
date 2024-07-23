@@ -27,6 +27,7 @@ from dbt.graph.selector_methods import (
     TagSelectorMethod,
     TestNameSelectorMethod,
     TestTypeSelectorMethod,
+    TimeSpineSelectorMethod,
     UnitTestSelectorMethod,
     VersionSelectorMethod,
 )
@@ -532,6 +533,16 @@ def test_select_semantic_model(manifest, table_model):
     methods = MethodManager(manifest, None)
     method = methods.get_method("semantic_model", [])
     assert isinstance(method, SemanticModelSelectorMethod)
+    assert search_manifest_using_method(manifest, method, "customer") == {"customer"}
+    assert not search_manifest_using_method(manifest, method, "not_customer")
+    assert search_manifest_using_method(manifest, method, "*omer") == {"customer"}
+
+
+def test_select_time_spine(manifest, time_spine):
+    manifest.time_spines[time_spine.unique_id] = time_spine
+    methods = MethodManager(manifest, None)
+    method = methods.get_method("time_spine", [])
+    assert isinstance(method, TimeSpineSelectorMethod)
     assert search_manifest_using_method(manifest, method, "customer") == {"customer"}
     assert not search_manifest_using_method(manifest, method, "not_customer")
     assert search_manifest_using_method(manifest, method, "*omer") == {"customer"}

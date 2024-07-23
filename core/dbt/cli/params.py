@@ -401,6 +401,7 @@ resource_type = click.option(
             "metric",
             "semantic_model",
             "saved_query",
+            "time_spine",
             "source",
             "analysis",
             "model",
@@ -428,6 +429,7 @@ exclude_resource_type = click.option(
         [
             "metric",
             "semantic_model",
+            "time_spine",
             "saved_query",
             "source",
             "analysis",

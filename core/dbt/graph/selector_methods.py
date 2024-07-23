@@ -27,6 +27,7 @@ from dbt.contracts.graph.nodes import (
     SemanticModel,
     SingularTestNode,
     SourceDefinition,
+    TimeSpine,
     UnitTestDefinition,
 )
 from dbt.contracts.graph.unparsed import UnparsedVersion
@@ -62,6 +63,7 @@ class MethodName(StrEnum):
     SourceStatus = "source_status"
     Version = "version"
     SemanticModel = "semantic_model"
+    TimeSpine = "time_spine"
     SavedQuery = "saved_query"
     UnitTest = "unit_test"
 
@@ -181,6 +183,15 @@ class SelectorMethod(metaclass=abc.ABCMeta):
                 continue
             yield unique_id, semantic_model
 
+    def time_spine_nodes(
+        self, included_nodes: Set[UniqueId]
+    ) -> Iterator[Tuple[UniqueId, TimeSpine]]:
+        for key, time_spine in self.manifest.time_spines.items():
+            unique_id = UniqueId(key)
+            if unique_id not in included_nodes:
+                continue
+            yield unique_id, time_spine
+
     def saved_query_nodes(
         self, included_nodes: Set[UniqueId]
     ) -> Iterator[Tuple[UniqueId, SavedQuery]]:
@@ -201,6 +212,7 @@ class SelectorMethod(metaclass=abc.ABCMeta):
             self.metric_nodes(included_nodes),
             self.unit_tests(included_nodes),
             self.semantic_model_nodes(included_nodes),
+            self.time_spine_nodes(included_nodes),
             self.saved_query_nodes(included_nodes),
         )
 
@@ -219,6 +231,7 @@ class SelectorMethod(metaclass=abc.ABCMeta):
             self.metric_nodes(included_nodes),
             self.unit_tests(included_nodes),
             self.semantic_model_nodes(included_nodes),
+            self.time_spine_nodes(included_nodes),
             self.saved_query_nodes(included_nodes),
         )
 
@@ -393,6 +406,31 @@ class SemanticModelSelectorMethod(SelectorMethod):
             raise DbtRuntimeError(msg)
 
         for unique_id, node in self.semantic_model_nodes(included_nodes):
+            if not fnmatch(node.package_name, target_package):
+                continue
+            if not fnmatch(node.name, target_name):
+                continue
+
+            yield unique_id
+
+
+class TimeSpineSelectorMethod(SelectorMethod):
+    def search(self, included_nodes: Set[UniqueId], selector: str) -> Iterator[UniqueId]:
+        parts = selector.split(".")
+        target_package = SELECTOR_GLOB
+        if len(parts) == 1:
+            target_name = parts[0]
+        elif len(parts) == 2:
+            target_package, target_name = parts
+        else:
+            msg = (
+                'Invalid time spine selector value "{}". Time spines must be of '
+                "the form ${{time_spine_name}} or "
+                "${{time_spine_package.time_spine_name}}"
+            ).format(selector)
+            raise DbtRuntimeError(msg)
+
+        for unique_id, node in self.time_spine_nodes(included_nodes):
             if not fnmatch(node.package_name, target_package):
                 continue
             if not fnmatch(node.name, target_name):

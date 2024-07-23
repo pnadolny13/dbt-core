@@ -656,6 +656,12 @@ class TestList:
         results = self.run_dbt_ls(["--resource-type", "semantic_model"])
         assert set(results) == {"semantic_model:test.my_sm"}
 
+        results = self.run_dbt_ls(["--resource-type", "time_spine"])
+        assert set(results) == {
+            "time_spine:test.time_spine_day",
+            "time_spine:test.time_spine_second",
+        }
+
         results = self.run_dbt_ls(["--resource-type", "metric"])
         assert set(results) == {"metric:test.total_outer"}
 

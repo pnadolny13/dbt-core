@@ -9,6 +9,7 @@ from dbt.contracts.graph.nodes import (
     SavedQuery,
     SemanticModel,
     SourceDefinition,
+    TimeSpine,
     UnitTestDefinition,
 )
 from dbt.events.types import NoNodesSelected
@@ -88,9 +89,11 @@ class ListTask(GraphRunnableTask):
                 yield self.manifest.unit_tests[unique_id]
             elif unique_id in self.manifest.saved_queries:
                 yield self.manifest.saved_queries[unique_id]
+            elif unique_id in self.manifest.time_spines:
+                yield self.manifest.time_spines[unique_id]
             else:
                 raise DbtRuntimeError(
-                    f'Got an unexpected result from node selection: "{unique_id}"'
+                    f'Got an unexpected result from node selection: "{unique_id}". '
                     f"Listing this node type is not yet supported!"
                 )
 
@@ -119,6 +122,10 @@ class ListTask(GraphRunnableTask):
                 assert isinstance(node, SemanticModel)
                 semantic_model_selector = ".".join([node.package_name, node.name])
                 yield f"semantic_model:{semantic_model_selector}"
+            elif node.resource_type == NodeType.TimeSpine:
+                assert isinstance(node, TimeSpine)
+                time_spine_selector = ".".join([node.package_name, node.name])
+                yield f"time_spine:{time_spine_selector}"
             elif node.resource_type == NodeType.Unit:
                 assert isinstance(node, UnitTestDefinition)
                 unit_test_selector = ".".join([node.package_name, node.versioned_name])

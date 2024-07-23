@@ -206,6 +206,8 @@ class NodeSelector(MethodManager):
             node = self.manifest.unit_tests[unique_id]
         elif unique_id in self.manifest.saved_queries:
             node = self.manifest.saved_queries[unique_id]
+        elif unique_id in self.manifest.time_spines:
+            node = self.manifest.time_spines[unique_id]
         else:
             raise DbtInternalError(f"Node {unique_id} not found in the manifest!")
         return self.node_is_match(node)
