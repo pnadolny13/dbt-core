@@ -54,6 +54,7 @@ from dbt.contracts.graph.nodes import (
     SeedNode,
     SemanticModel,
     SourceDefinition,
+    TimeSpine,
     UnitTestNode,
 )
 from dbt.exceptions import (
@@ -1796,6 +1797,50 @@ def generate_parse_semantic_models(
         "ref": SemanticModelRefResolver(
             None,
             semantic_model,
+            project,
+            manifest,
+        ),
+    }
+
+
+# applies to TimeSpines
+class TimeSpineRefResolver(BaseResolver):
+    def __call__(self, *args, **kwargs) -> str:
+        package = None
+        if len(args) == 1:
+            name = args[0]
+        elif len(args) == 2:
+            package, name = args
+        else:
+            raise RefArgsError(node=self.model, args=args)
+
+        version = kwargs.get("version") or kwargs.get("v")
+        self.validate_args(name, package, version)
+
+        # "model" here is any node
+        self.model.refs.append(RefArgs(package=package, name=name, version=version))
+        return ""
+
+    def validate_args(self, name, package, version):
+        if not isinstance(name, str):
+            raise ParsingError(
+                f"In a time spine section in {self.model.original_file_path} "
+                "the name argument to ref() must be a string"
+            )
+
+
+# used for time spines
+def generate_parse_time_spines(
+    time_spine: TimeSpine,
+    config: RuntimeConfig,
+    manifest: Manifest,
+    package_name: str,
+) -> Dict[str, Any]:
+    project = config.load_dependencies()[package_name]
+    return {
+        "ref": TimeSpineRefResolver(
+            None,
+            time_spine,
             project,
             manifest,
         ),

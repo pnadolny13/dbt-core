@@ -20139,6 +20139,8 @@
         "type": "string"
       }
     },
+
+
     "semantic_models": {
       "type": "object",
       "description": "The semantic models defined in the dbt project",

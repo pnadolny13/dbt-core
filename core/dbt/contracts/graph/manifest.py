@@ -58,6 +58,7 @@ from dbt.contracts.graph.nodes import (
     SeedNode,
     SemanticModel,
     SourceDefinition,
+    TimeSpine,
     UnitTestDefinition,
     UnitTestFileFixture,
     UnpatchedSourceDefinition,
@@ -185,6 +186,7 @@ class RefableLookup(dbtClassMixin):
         version: Optional[NodeVersion],
         node: Optional[GraphMemberNode] = None,
     ):
+        print(self.storage)
         if version:
             key = f"{key}.v{version}"
 
@@ -826,6 +828,7 @@ class Manifest(MacroMethods, dbtClassMixin):
     unit_tests: MutableMapping[str, UnitTestDefinition] = field(default_factory=dict)
     saved_queries: MutableMapping[str, SavedQuery] = field(default_factory=dict)
     fixtures: MutableMapping[str, UnitTestFileFixture] = field(default_factory=dict)
+    time_spines: MutableMapping[str, TimeSpine] = field(default_factory=dict)
 
     _doc_lookup: Optional[DocLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
@@ -894,6 +897,7 @@ class Manifest(MacroMethods, dbtClassMixin):
             "semantic_models": {
                 k: v.to_dict(omit_none=False) for k, v in self.semantic_models.items()
             },
+            "time_spines": {k: v.to_dict(omit_none=False) for k, v in self.time_spines.items()},
             "saved_queries": {
                 k: v.to_dict(omit_none=False) for k, v in self.saved_queries.items()
             },
@@ -984,6 +988,7 @@ class Manifest(MacroMethods, dbtClassMixin):
             self.sources.values(),
             self.metrics.values(),
             self.semantic_models.values(),
+            self.time_spines.values(),
             self.saved_queries.values(),
             self.unit_tests.values(),
         )
@@ -1023,6 +1028,7 @@ class Manifest(MacroMethods, dbtClassMixin):
             semantic_models={k: _deepcopy(v) for k, v in self.semantic_models.items()},
             unit_tests={k: _deepcopy(v) for k, v in self.unit_tests.items()},
             saved_queries={k: _deepcopy(v) for k, v in self.saved_queries.items()},
+            time_spines={k: _deepcopy(v) for k, v in self.time_spines.items()},
         )
         copy.build_flat_graph()
         return copy
@@ -1035,6 +1041,7 @@ class Manifest(MacroMethods, dbtClassMixin):
                 self.exposures.values(),
                 self.metrics.values(),
                 self.semantic_models.values(),
+                self.time_spines.values(),
                 self.saved_queries.values(),
                 self.unit_tests.values(),
             )
@@ -1062,6 +1069,8 @@ class Manifest(MacroMethods, dbtClassMixin):
                 self.metrics.values(),
             )
         )
+        print("groupable:", groupable_nodes)
+        print("Nodes:", self.nodes.values())
         group_map = {group.name: [] for group in self.groups.values()}
         for node in groupable_nodes:
             if node.group is not None:
@@ -1093,6 +1102,7 @@ class Manifest(MacroMethods, dbtClassMixin):
             groups=cls._map_resources_to_map_nodes(writable_manifest.groups),
             semantic_models=cls._map_resources_to_map_nodes(writable_manifest.semantic_models),
             saved_queries=cls._map_resources_to_map_nodes(writable_manifest.saved_queries),
+            time_spines=cls._map_resources_to_map_nodes(writable_manifest.time_spines),
             selectors={
                 selector_id: selector
                 for selector_id, selector in writable_manifest.selectors.items()
@@ -1154,6 +1164,7 @@ class Manifest(MacroMethods, dbtClassMixin):
             parent_map=self.parent_map,
             group_map=self.group_map,
             semantic_models=self._map_nodes_to_map_resources(self.semantic_models),
+            time_spines=self._map_nodes_to_map_resources(self.time_spines),
             unit_tests=self._map_nodes_to_map_resources(self.unit_tests),
             saved_queries=self._map_nodes_to_map_resources(self.saved_queries),
         )
@@ -1174,6 +1185,8 @@ class Manifest(MacroMethods, dbtClassMixin):
             return self.metrics[unique_id]
         elif unique_id in self.semantic_models:
             return self.semantic_models[unique_id]
+        elif unique_id in self.time_spines:
+            return self.time_spines[unique_id]
         elif unique_id in self.unit_tests:
             return self.unit_tests[unique_id]
         elif unique_id in self.saved_queries:
@@ -1616,6 +1629,11 @@ class Manifest(MacroMethods, dbtClassMixin):
         self.semantic_models[semantic_model.unique_id] = semantic_model
         source_file.semantic_models.append(semantic_model.unique_id)
 
+    def add_time_spine(self, source_file: SchemaSourceFile, time_spine: TimeSpine):
+        _check_duplicates(time_spine, self.time_spines)
+        self.time_spines[time_spine.unique_id] = time_spine
+        source_file.time_spines.append(time_spine.unique_id)
+
     def add_unit_test(self, source_file: SchemaSourceFile, unit_test: UnitTestDefinition):
         if unit_test.unique_id in self.unit_tests:
             raise DuplicateResourceNameError(unit_test, self.unit_tests[unit_test.unique_id])
@@ -1662,6 +1680,8 @@ class Manifest(MacroMethods, dbtClassMixin):
             self.semantic_models,
             self.unit_tests,
             self.saved_queries,
+            self.fixtures,
+            self.time_spines,
             self._doc_lookup,
             self._source_lookup,
             self._ref_lookup,

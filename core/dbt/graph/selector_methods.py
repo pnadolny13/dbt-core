@@ -175,7 +175,6 @@ class SelectorMethod(metaclass=abc.ABCMeta):
     def semantic_model_nodes(
         self, included_nodes: Set[UniqueId]
     ) -> Iterator[Tuple[UniqueId, SemanticModel]]:
-
         for key, semantic_model in self.manifest.semantic_models.items():
             unique_id = UniqueId(key)
             if unique_id not in included_nodes:

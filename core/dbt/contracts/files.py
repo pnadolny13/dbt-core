@@ -203,6 +203,7 @@ class SchemaSourceFile(BaseSourceFile):
     # node patches contain models, seeds, snapshots, analyses
     ndp: List[str] = field(default_factory=list)
     semantic_models: List[str] = field(default_factory=list)
+    time_spines: List[str] = field(default_factory=list)
     unit_tests: List[str] = field(default_factory=list)
     saved_queries: List[str] = field(default_factory=list)
     # any macro patches in this file by macro unique_id.

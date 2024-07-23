@@ -58,6 +58,7 @@ from dbt.contracts.graph.nodes import (
     SeedNode,
     SemanticModel,
     SourceDefinition,
+    TimeSpine,
 )
 from dbt.contracts.graph.semantic_manifest import SemanticManifest
 from dbt.events.types import (
@@ -1119,6 +1120,11 @@ class ManifestLoader:
                 continue
             _process_refs(self.manifest, current_project, semantic_model, dependencies)
             self.update_semantic_model(semantic_model)
+        for time_spine in self.manifest.time_spines.values():
+            if time_spine.created_at < self.started_at:
+                continue
+            _process_refs(self.manifest, current_project, time_spine, dependencies)
+            self.update_time_spine(time_spine)
 
     # Takes references in 'metrics' array of nodes and exposures, finds the target
     # node, and updates 'depends_on.nodes' with the unique id
@@ -1156,12 +1162,24 @@ class ManifestLoader:
             primary_key = node.infer_primary_key(generic_tests)
             node.primary_key = sorted(primary_key)
 
-    def update_semantic_model(self, semantic_model) -> None:
+    def update_semantic_model(self, semantic_model: SemanticModel) -> None:
         # This has to be done at the end of parsing because the referenced model
         # might have alias/schema/database fields that are updated by yaml config.
         if semantic_model.depends_on_nodes[0]:
             refd_node = self.manifest.nodes[semantic_model.depends_on_nodes[0]]
             semantic_model.node_relation = NodeRelation(
+                relation_name=refd_node.relation_name,
+                alias=refd_node.alias,
+                schema_name=refd_node.schema,
+                database=refd_node.database,
+            )
+
+    def update_time_spine(self, time_spine: TimeSpine) -> None:
+        # This has to be done at the end of parsing because the referenced model
+        # might have alias/schema/database fields that are updated by yaml config.
+        if time_spine.depends_on_nodes[0]:
+            refd_node = self.manifest.nodes[time_spine.depends_on_nodes[0]]
+            time_spine.node_relation = NodeRelation(
                 relation_name=refd_node.relation_name,
                 alias=refd_node.alias,
                 schema_name=refd_node.schema,

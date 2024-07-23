@@ -78,6 +78,7 @@ def _generate_stats(manifest: Manifest) -> Dict[NodeType, int]:
     stats[NodeType.Macro] += len(manifest.macros)
     stats[NodeType.Group] += len(manifest.groups)
     stats[NodeType.SemanticModel] += len(manifest.semantic_models)
+    stats[NodeType.TimeSpine] += len(manifest.time_spines)
     stats[NodeType.SavedQuery] += len(manifest.saved_queries)
     stats[NodeType.Unit] += len(manifest.unit_tests)
 
@@ -176,6 +177,8 @@ class Linker:
             self.link_node(node, manifest)
         for semantic_model in manifest.semantic_models.values():
             self.link_node(semantic_model, manifest)
+        for time_spine in manifest.time_spines.values():
+            self.link_node(time_spine, manifest)
         for exposure in manifest.exposures.values():
             self.link_node(exposure, manifest)
         for metric in manifest.metrics.values():

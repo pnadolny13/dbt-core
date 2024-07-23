@@ -112,6 +112,7 @@ select 4 as id
 
 """
 
+
 semantic_models__sm_yml = """
 semantic_models:
   - name: my_sm

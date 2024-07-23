@@ -13,6 +13,7 @@ from dbt.artifacts.resources import (
     RefArgs,
     TestConfig,
     TestMetadata,
+    TimeSpinePrimaryColumn,
     WhereFilter,
     WhereFilterIntersection,
 )
@@ -38,11 +39,12 @@ from dbt.contracts.graph.nodes import (
     SemanticModel,
     SingularTestNode,
     SourceDefinition,
+    TimeSpine,
     UnitTestDefinition,
 )
 from dbt.contracts.graph.unparsed import UnitTestInputFixture, UnitTestOutputFixture
 from dbt.node_types import NodeType
-from dbt_semantic_interfaces.type_enums import MetricType
+from dbt_semantic_interfaces.type_enums import MetricType, TimeGranularity
 
 
 def make_model(
@@ -874,6 +876,30 @@ def saved_query() -> SavedQuery:
     )
 
 
+# TODO: populate depends_on
+@pytest.fixture
+def time_spine(table_model) -> TimeSpine:
+    pkg = "test"
+    name = "test_time_spine"
+    path = "test_path"
+    return TimeSpine(
+        name=name,
+        resource_type=NodeType.TimeSpine,
+        package_name=pkg,
+        path=path,
+        unique_id=f"time_spine.{pkg}.{name}",
+        original_file_path=path,
+        fqn=[pkg, "time_spines", name],
+        model=table_model,
+        node_relation=NodeRelation(
+            alias=table_model.alias,
+            schema_name="dbt",
+            relation_name=table_model.name,
+        ),
+        primary_column=TimeSpinePrimaryColumn(name="ds_day", time_granularity=TimeGranularity.DAY),
+    )
+
+
 @pytest.fixture
 def semantic_model(table_model) -> SemanticModel:
     return make_semantic_model("test", "test_semantic_model", model=table_model)
@@ -1004,6 +1030,11 @@ def saved_queries(saved_query: SavedQuery) -> List[SavedQuery]:
 
 
 @pytest.fixture
+def time_spines(time_spine: TimeSpine) -> List[TimeSpine]:
+    return [time_spine]
+
+
+@pytest.fixture
 def files() -> Dict[str, AnySourceFile]:
     return {}
 
@@ -1022,6 +1053,7 @@ def make_manifest(
     semantic_models: List[SemanticModel] = [],
     sources: List[SourceDefinition] = [],
     unit_tests: List[UnitTestDefinition] = [],
+    time_spines: List[TimeSpine] = [],
 ) -> Manifest:
     manifest = Manifest(
         nodes={n.unique_id: n for n in nodes},
@@ -1038,6 +1070,7 @@ def make_manifest(
         groups={g.unique_id: g for g in groups},
         metadata=ManifestMetadata(adapter_type="postgres", project_name="pkg"),
         saved_queries={s.unique_id: s for s in saved_queries},
+        time_spines={t.unique_id: t for t in time_spines},
     )
     manifest.build_parent_and_child_maps()
     return manifest
@@ -1055,7 +1088,9 @@ def manifest(
     semantic_models,
     files,
     saved_queries,
+    time_spines,
 ) -> Manifest:
+    print(nodes)
     return make_manifest(
         nodes=nodes,
         sources=sources,
@@ -1065,4 +1100,5 @@ def manifest(
         files=files,
         metrics=metrics,
         saved_queries=saved_queries,
+        time_spines=time_spines,
     )

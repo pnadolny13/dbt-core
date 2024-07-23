@@ -215,6 +215,9 @@ class TestInvalidDerivedMetrics:
             run_dbt(["run"])
 
 
+# new tests with similar structure
+
+
 class TestMetricDependsOn:
     @pytest.fixture(scope="class")
     def models(self):

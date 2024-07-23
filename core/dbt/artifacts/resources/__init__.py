@@ -86,6 +86,7 @@ from dbt.artifacts.resources.v1.source_definition import (
     SourceDefinition,
 )
 from dbt.artifacts.resources.v1.sql_operation import SqlOperation
+from dbt.artifacts.resources.v1.time_spines import TimeSpine, TimeSpinePrimaryColumn
 from dbt.artifacts.resources.v1.unit_test_definition import (
     UnitTestConfig,
     UnitTestDefinition,

@@ -50,9 +50,8 @@ def search_manifest_using_method(manifest, method, selection):
         | set(manifest.sources)
         | set(manifest.exposures)
         | set(manifest.metrics)
-        | set(manifest.semantic_models)
-        | set(manifest.saved_queries)
-        | set(manifest.unit_tests),
+        # here & this file!
+        | set(manifest.semantic_models) | set(manifest.saved_queries) | set(manifest.unit_tests),
         selection,
     )
     results = {manifest.expect(uid).search_name for uid in selected}

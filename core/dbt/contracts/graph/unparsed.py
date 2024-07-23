@@ -670,6 +670,19 @@ class UnparsedSemanticModel(dbtClassMixin):
 
 
 @dataclass
+class UnparsedTimeSpinePrimaryColumn(dbtClassMixin):
+    name: str
+    time_granularity: str  # str is really a TimeGranularity Enum
+
+
+@dataclass
+class UnparsedTimeSpine(dbtClassMixin):
+    name: str
+    model: str  # looks like "ref(...)"
+    primary_column: UnparsedTimeSpinePrimaryColumn
+
+
+@dataclass
 class UnparsedQueryParams(dbtClassMixin):
     metrics: List[str] = field(default_factory=list)
     group_by: List[str] = field(default_factory=list)

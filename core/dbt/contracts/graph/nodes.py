@@ -58,6 +58,7 @@ from dbt.artifacts.resources import SingularTest as SingularTestResource
 from dbt.artifacts.resources import Snapshot as SnapshotResource
 from dbt.artifacts.resources import SourceDefinition as SourceDefinitionResource
 from dbt.artifacts.resources import SqlOperation as SqlOperationResource
+from dbt.artifacts.resources import TimeSpine as TimeSpineResource
 from dbt.artifacts.resources import UnitTestDefinition as UnitTestDefinitionResource
 from dbt.contracts.graph.model_config import UnitTestNodeConfig
 from dbt.contracts.graph.node_args import ModelNodeArgs
@@ -1419,7 +1420,7 @@ class Metric(GraphNode, MetricResource):
         # existing when it didn't before is a change!
         # metadata/tags changes are not "changes"
         if old is None:
-            return True
+            return True  # is this a bug?
 
         return (
             self.same_filter(old)
@@ -1501,7 +1502,7 @@ class SemanticModel(GraphNode, SemanticModelResource):
         # existing when it didn't before is a change!
         # metadata/tags changes are not "changes"
         if old is None:
-            return True
+            return True  # is this a bug?
 
         return (
             self.same_model(old)
@@ -1515,6 +1516,39 @@ class SemanticModel(GraphNode, SemanticModelResource):
             and self.same_group(old)
             and True
         )
+
+
+# ====================================
+# TimeSpine node
+# ====================================
+
+
+@dataclass
+class TimeSpine(GraphNode, TimeSpineResource):
+    @property
+    def depends_on_nodes(self):
+        return self.depends_on.nodes
+
+    @property
+    def depends_on_macros(self):
+        return self.depends_on.macros
+
+    @classmethod
+    def resource_class(cls) -> Type[TimeSpineResource]:
+        return TimeSpineResource
+
+    def same_model(self, old: "TimeSpine") -> bool:
+        return self.model == old.model
+
+    def same_primary_column(self, old: "TimeSpine") -> bool:
+        return self.primary_column == old.primary_column
+
+    def same_contents(self, old: Optional["TimeSpine"]) -> bool:
+        # existing when it didn't before is a change!
+        if old is None:
+            return False  # is this right?
+
+        return self.same_model(old) and self.same_primary_column(old)
 
 
 # ====================================
@@ -1652,6 +1686,7 @@ GraphMemberNode = Union[
     Metric,
     SavedQuery,
     SemanticModel,
+    TimeSpine,
     UnitTestDefinition,
 ]
 

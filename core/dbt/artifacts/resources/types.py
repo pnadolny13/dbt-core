@@ -35,6 +35,7 @@ class NodeType(StrEnum):
     SemanticModel = "semantic_model"
     Unit = "unit_test"
     Fixture = "fixture"
+    TimeSpine = "time_spine"
 
     def pluralize(self) -> str:
         if self is self.Analysis:

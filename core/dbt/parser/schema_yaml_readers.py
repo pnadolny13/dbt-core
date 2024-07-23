@@ -18,6 +18,7 @@ from dbt.artifacts.resources import (
     NonAdditiveDimension,
     QueryParams,
     SavedQueryConfig,
+    TimeSpinePrimaryColumn,
     WhereFilter,
     WhereFilterIntersection,
 )
@@ -30,9 +31,17 @@ from dbt.context.context_config import (
 from dbt.context.providers import (
     generate_parse_exposure,
     generate_parse_semantic_models,
+    generate_parse_time_spines,
 )
 from dbt.contracts.files import SchemaSourceFile
-from dbt.contracts.graph.nodes import Exposure, Group, Metric, SavedQuery, SemanticModel
+from dbt.contracts.graph.nodes import (
+    Exposure,
+    Group,
+    Metric,
+    SavedQuery,
+    SemanticModel,
+    TimeSpine,
+)
 from dbt.contracts.graph.unparsed import (
     UnparsedConversionTypeParams,
     UnparsedCumulativeTypeParams,
@@ -51,6 +60,8 @@ from dbt.contracts.graph.unparsed import (
     UnparsedQueryParams,
     UnparsedSavedQuery,
     UnparsedSemanticModel,
+    UnparsedTimeSpine,
+    UnparsedTimeSpinePrimaryColumn,
 )
 from dbt.exceptions import JSONValidationError, YamlParseDictError
 from dbt.node_types import NodeType
@@ -865,3 +876,63 @@ class SavedQueryParser(YamlReader):
         # The supertype (YamlReader) requires `parse` to return a ParseResult, so
         # we return an empty one because we don't have one to actually return.
         return ParseResult()
+
+
+# TODO: import this parser somewhere to be used
+class TimeSpineParser(YamlReader):
+    def __init__(self, schema_parser: SchemaParser, yaml: YamlBlock) -> None:
+        super().__init__(schema_parser, yaml, "time_spines")
+        self.schema_parser = schema_parser
+        self.yaml = yaml
+
+    def _get_primary_column(
+        self, unparsed: UnparsedTimeSpinePrimaryColumn
+    ) -> TimeSpinePrimaryColumn:
+        return TimeSpinePrimaryColumn(
+            name=unparsed.name, time_granularity=TimeGranularity(unparsed.time_granularity)
+        )
+
+    def parse_time_spine(self, unparsed: UnparsedTimeSpine) -> None:
+        package_name = self.project.project_name
+        unique_id = f"{NodeType.TimeSpine}.{package_name}.{unparsed.name}"
+        path = self.yaml.path.relative_path
+
+        fqn = self.schema_parser.get_fqn_prefix(path)
+        fqn.append(unparsed.name)
+
+        parsed = TimeSpine(
+            name=unparsed.name,
+            resource_type=NodeType.TimeSpine,
+            package_name=package_name,
+            path=path,
+            original_file_path=self.yaml.path.original_file_path,
+            unique_id=unique_id,
+            fqn=fqn,
+            model=unparsed.model,
+            primary_column=self._get_primary_column(unparsed.primary_column),
+            node_relation=None,  # Resolved from the value of "model" after parsing
+        )
+
+        ctx = generate_parse_time_spines(
+            parsed,
+            self.root_project,
+            self.schema_parser.manifest,
+            package_name,
+        )
+
+        if parsed.model is not None:
+            model_ref = "{{ " + parsed.model + " }}"
+            get_rendered(model_ref, ctx, parsed)
+
+        assert isinstance(self.yaml.file, SchemaSourceFile)
+        self.manifest.add_time_spine(self.yaml.file, parsed)
+
+    def parse(self) -> None:
+        for data in self.get_key_dicts():  # todo? get_key_dicts
+            try:
+                UnparsedTimeSpine.validate(data)
+                unparsed = UnparsedTimeSpine.from_dict(data)
+            except (ValidationError, JSONValidationError) as exc:
+                raise YamlParseDictError(self.yaml.path, self.key, data, exc)
+
+            self.parse_time_spine(unparsed)

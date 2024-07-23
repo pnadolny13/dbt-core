@@ -3,10 +3,11 @@ import pytest
 from dbt.contracts.graph.semantic_manifest import SemanticManifest
 
 
-# Overwrite the default nods to construct the manifest
+# Overwrite the default nodes to construct the manifest
 @pytest.fixture
-def nodes(metricflow_time_spine_model):
-    return [metricflow_time_spine_model]
+def nodes(metricflow_time_spine_model, time_spines):
+    print([metricflow_time_spine_model] + [time_spine.model for time_spine in time_spines])
+    return [metricflow_time_spine_model] + [time_spine.model for time_spine in time_spines]
 
 
 @pytest.fixture

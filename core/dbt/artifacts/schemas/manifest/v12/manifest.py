@@ -19,6 +19,7 @@ from dbt.artifacts.resources import (
     Snapshot,
     SourceDefinition,
     SqlOperation,
+    TimeSpine,
     UnitTestDefinition,
 )
 from dbt.artifacts.schemas.base import (
@@ -147,6 +148,9 @@ class WritableManifest(ArtifactMixin):
     )
     semantic_models: Mapping[UniqueID, SemanticModel] = field(
         metadata=dict(description=("The semantic models defined in the dbt project"))
+    )
+    time_spines: Mapping[UniqueID, TimeSpine] = field(
+        metadata=dict(description=("The time spine models defined in the dbt project."))
     )
     metadata: ManifestMetadata = field(
         metadata=dict(

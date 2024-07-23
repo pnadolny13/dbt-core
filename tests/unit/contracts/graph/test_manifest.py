@@ -375,6 +375,7 @@ class ManifestTest(unittest.TestCase):
             metadata=ManifestMetadata(generated_at=datetime.utcnow()),
             semantic_models={},
             saved_queries={},
+            time_spines={},
         )
 
         invocation_id = dbt_common.invocation._INVOCATION_ID
@@ -407,6 +408,7 @@ class ManifestTest(unittest.TestCase):
                 "semantic_models": {},
                 "unit_tests": {},
                 "saved_queries": {},
+                "time_spines": {},
             },
         )
 
@@ -508,6 +510,7 @@ class ManifestTest(unittest.TestCase):
                     "metrics",
                     "semantic_models",
                     "saved_queries",
+                    "time_spines",
                 ]
             ),
         )
@@ -577,6 +580,7 @@ class ManifestTest(unittest.TestCase):
                 "semantic_models": {},
                 "unit_tests": {},
                 "saved_queries": {},
+                "time_spines": {},
             },
         )
 
@@ -922,6 +926,7 @@ class MixedManifestTest(unittest.TestCase):
                 "semantic_models": {},
                 "unit_tests": {},
                 "saved_queries": {},
+                "time_spines": {},
             },
         )
 
@@ -1006,6 +1011,7 @@ class MixedManifestTest(unittest.TestCase):
                     "sources",
                     "semantic_models",
                     "saved_queries",
+                    "time_spines",
                 ]
             ),
         )
