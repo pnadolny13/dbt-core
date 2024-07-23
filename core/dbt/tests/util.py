@@ -72,7 +72,9 @@ from dbt_common.events.types import Note
 #   run_dbt(["test"], expect_pass=False)
 def run_dbt(
     args: Optional[List[str]] = None,
+    /,
     expect_pass: bool = True,
+    **kwargs
 ):
     # reset global vars
     reset_metadata_vars()
@@ -91,7 +93,7 @@ def run_dbt(
     if profiles_dir and "--profiles-dir" not in args:
         args.extend(["--profiles-dir", profiles_dir])
     dbt = dbtRunner()
-    res = dbt.invoke(args)
+    res = dbt.invoke(args, **kwargs)
 
     # the exception is immediately raised to be caught in tests
     # using a pattern like `with pytest.raises(SomeException):`
@@ -110,12 +112,14 @@ def run_dbt(
 # will turn the logs into json, so you have to be prepared for that.
 def run_dbt_and_capture(
     args: Optional[List[str]] = None,
+    /,
     expect_pass: bool = True,
+    **kwargs
 ):
     try:
         stringbuf = StringIO()
         capture_stdout_logs(stringbuf)
-        res = run_dbt(args, expect_pass=expect_pass)
+        res = run_dbt(args, expect_pass=expect_pass, **kwargs)
         stdout = stringbuf.getvalue()
 
     finally:
