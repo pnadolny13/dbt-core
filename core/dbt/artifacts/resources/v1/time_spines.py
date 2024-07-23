@@ -4,8 +4,8 @@ from typing import List, Optional
 
 from dbt.artifacts.resources.base import GraphResource
 from dbt.artifacts.resources.v1.components import DependsOn, RefArgs
-from dbt_common.dataclass_schema import dbtClassMixin
 from dbt.artifacts.resources.v1.semantic_model import NodeRelation
+from dbt_common.dataclass_schema import dbtClassMixin
 from dbt_semantic_interfaces.type_enums.time_granularity import TimeGranularity
 
 # ====================================
