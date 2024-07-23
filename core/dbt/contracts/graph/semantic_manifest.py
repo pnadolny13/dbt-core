@@ -71,11 +71,23 @@ class SemanticManifest:
         time_spines = list(self.manifest.time_spines.values())
 
         pydantic_time_spines: List[PydanticTimeSpine] = []
+        time_spine_models_not_found: Set[str] = set()
+        daily_time_spine: Optional[TimeSpine] = None
         for time_spine in time_spines:
-            # Assert for type checker
-            assert (
-                time_spine.node_relation
-            ), f"Internal parsing issue: node relation was not set as expected on time spine {time_spine.name}"
+            # Assertion for type checker
+            assert time_spine.node_relation, (
+                f"Node relation should have been set for time time spine {time_spine.name} during "
+                "manifest parsing, but it was not found."
+            )
+            time_spine_model = self.manifest.ref_lookup.find(
+                time_spine.node_relation.alias, None, None, self.manifest
+            )
+            if not time_spine_model:
+                time_spine_models_not_found.add(time_spine.node_relation.alias)
+            if time_spine_models_not_found:
+                raise ParsingError(
+                    f"Error parsing time spines. Referenced models do not exist: {time_spine_models_not_found}"
+                )
             pydantic_time_spine = PydanticTimeSpine(
                 name=time_spine.name,
                 node_relation=PydanticNodeRelation(
@@ -90,6 +102,8 @@ class SemanticManifest:
                 ),
             )
             pydantic_time_spines.append(pydantic_time_spine)
+            if time_spine.primary_column.time_granularity == TimeGranularity.DAY:
+                daily_time_spine = time_spine
 
         project_config = PydanticProjectConfiguration(
             time_spine_table_configurations=[], time_spines=pydantic_time_spines
@@ -113,20 +127,6 @@ class SemanticManifest:
 
         if self.manifest.semantic_models:
             # Validate that there is a time spine configured for the semantic manifest.
-            time_spine_models_not_found: Set[str] = set()
-            daily_time_spine: Optional[TimeSpine] = None
-            for time_spine in time_spines:
-                if time_spine.primary_column.time_granularity == TimeGranularity.DAY:
-                    daily_time_spine = time_spine
-                time_spine_model = self.manifest.ref_lookup.find(
-                    time_spine.model.name, None, None, self.manifest
-                )
-                if not time_spine_model:
-                    time_spine_models_not_found.add(time_spine.model.name)
-            if time_spine_models_not_found:
-                raise ParsingError(
-                    f"Error parsing time spines. Referenced models do not exist: {time_spine_models_not_found}"
-                )
 
             # If no daily time spine has beem configured, look for legacy time spine model. This logic is included to
             # avoid breaking projects that have not migrated to the new time spine config yet.
