@@ -1069,8 +1069,7 @@ class Manifest(MacroMethods, dbtClassMixin):
                 self.metrics.values(),
             )
         )
-        print("groupable:", groupable_nodes)
-        print("Nodes:", self.nodes.values())
+
         group_map = {group.name: [] for group in self.groups.values()}
         for node in groupable_nodes:
             if node.group is not None:

@@ -888,6 +888,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
         "semantic_models": {},
         "unit_tests": {},
         "saved_queries": {},
+        "time_spines": {},
     }
 
 
@@ -1447,6 +1448,7 @@ def expected_references_manifest(project):
         "semantic_models": {},
         "unit_tests": {},
         "saved_queries": {},
+        "time_spines": {},
     }
 
 
@@ -1925,4 +1927,5 @@ def expected_versions_manifest(project):
         "semantic_models": {},
         "unit_tests": {},
         "saved_queries": {},
+        "time_spines": {},
     }

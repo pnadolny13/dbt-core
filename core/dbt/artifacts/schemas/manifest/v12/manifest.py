@@ -149,9 +149,6 @@ class WritableManifest(ArtifactMixin):
     semantic_models: Mapping[UniqueID, SemanticModel] = field(
         metadata=dict(description=("The semantic models defined in the dbt project"))
     )
-    time_spines: Mapping[UniqueID, TimeSpine] = field(
-        metadata=dict(description=("The time spine models defined in the dbt project."))
-    )
     metadata: ManifestMetadata = field(
         metadata=dict(
             description="Metadata about the manifest",
@@ -161,6 +158,10 @@ class WritableManifest(ArtifactMixin):
         metadata=dict(
             description="The unit tests defined in the project",
         )
+    )
+    time_spines: Mapping[UniqueID, TimeSpine] = field(
+        metadata=dict(description=("The time spine models defined in the dbt project.")),
+        default_factory=dict,  # how do all the other fields succeed without a default?
     )
 
     @classmethod
