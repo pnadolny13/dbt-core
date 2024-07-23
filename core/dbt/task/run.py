@@ -1,7 +1,7 @@
 import functools
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import AbstractSet, Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from dbt import tracking, utils
@@ -214,6 +214,14 @@ class ModelRunner(CompileRunner):
         )
 
     def before_execute(self):
+        if self.node.config.get("microbatch"):
+            # TODO: actually use partition_grain
+            # partition_grain = self.node.config.get("partition_grain")
+            lookback = self.node.config.get("lookback")
+            self.node.end_time = datetime.now()
+            self.node.start_time = self.node.end_time - timedelta(days=lookback)
+            self.node.start_time.replace(minute=0, hour=0, second=0, microsecond=0)
+
         self.print_start_line()
 
     def after_execute(self, result):

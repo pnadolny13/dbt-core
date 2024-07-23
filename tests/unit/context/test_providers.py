@@ -41,9 +41,12 @@ class TestRuntimeRefResolver:
         mock_db_wrapper = mock.Mock()
         mock_db_wrapper.Relation = BaseRelation
 
+        mock_model = mock.Mock()
+        mock_model.event_time = None
+
         return RuntimeRefResolver(
             db_wrapper=mock_db_wrapper,
-            model=mock.Mock(),
+            model=mock_model,
             config=mock.Mock(),
             manifest=mock.Mock(),
         )
@@ -82,9 +85,12 @@ class TestRuntimeSourceResolver:
         mock_db_wrapper = mock.Mock()
         mock_db_wrapper.Relation = BaseRelation
 
+        mock_model = mock.Mock()
+        mock_model.event_time = None
+
         return RuntimeSourceResolver(
             db_wrapper=mock_db_wrapper,
-            model=mock.Mock(),
+            model=mock_model,
             config=mock.Mock(),
             manifest=mock.Mock(),
         )

@@ -379,6 +379,10 @@ class CompiledNode(CompiledResource, ParsedNode):
     """Contains attributes necessary for SQL files and nodes with refs, sources, etc,
     so all ManifestNodes except SeedNode."""
 
+    # TODO: should these go here? and get set during execution?
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+
     @property
     def empty(self):
         return not self.raw_code.strip()

@@ -219,6 +219,7 @@ class CompiledResource(ParsedResource):
     extra_ctes: List[InjectedCTE] = field(default_factory=list)
     _pre_injected_sql: Optional[str] = None
     contract: Contract = field(default_factory=Contract)
+    event_time: Optional[str] = None
 
     def __post_serialize__(self, dct: Dict, context: Optional[Dict] = None):
         dct = super().__post_serialize__(dct, context)

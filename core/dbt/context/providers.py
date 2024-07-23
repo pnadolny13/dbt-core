@@ -20,6 +20,7 @@ from typing_extensions import Protocol
 
 from dbt import selected_resources
 from dbt.adapters.base.column import Column
+from dbt.adapters.base.relation import EventTimeFilter
 from dbt.adapters.contracts.connection import AdapterResponse
 from dbt.adapters.exceptions import MissingConfigError
 from dbt.adapters.factory import (
@@ -229,6 +230,21 @@ class BaseResolver(metaclass=abc.ABCMeta):
     @property
     def resolve_limit(self) -> Optional[int]:
         return 0 if getattr(self.config.args, "EMPTY", False) else None
+
+    @property
+    def resolve_event_time_filter(self) -> Optional[EventTimeFilter]:
+        field_name = getattr(self.model, "event_time")
+        start_time = getattr(self.model, "start_time")
+        end_time = getattr(self.model, "end_time")
+
+        if start_time and end_time and field_name:
+            return EventTimeFilter(
+                field_name=field_name,
+                start_time=start_time,
+                end_time=end_time,
+            )
+
+        return None
 
     @abc.abstractmethod
     def __call__(self, *args: str) -> Union[str, RelationProxy, MetricReference]:
@@ -545,7 +561,11 @@ class RuntimeRefResolver(BaseRefResolver):
     def create_relation(self, target_model: ManifestNode) -> RelationProxy:
         if target_model.is_ephemeral_model:
             self.model.set_cte(target_model.unique_id, None)
-            return self.Relation.create_ephemeral_from(target_model, limit=self.resolve_limit)
+            return self.Relation.create_ephemeral_from(
+                target_model,
+                limit=self.resolve_limit,
+                event_time_filter=self.resolve_event_time_filter,
+            )
         elif (
             hasattr(target_model, "defer_relation")
             and target_model.defer_relation
@@ -563,10 +583,18 @@ class RuntimeRefResolver(BaseRefResolver):
             )
         ):
             return self.Relation.create_from(
-                self.config, target_model.defer_relation, limit=self.resolve_limit
+                self.config,
+                target_model.defer_relation,
+                limit=self.resolve_limit,
+                event_time_filter=self.resolve_event_time_filter,
             )
         else:
-            return self.Relation.create_from(self.config, target_model, limit=self.resolve_limit)
+            return self.Relation.create_from(
+                self.config,
+                target_model,
+                limit=self.resolve_limit,
+                event_time_filter=self.resolve_event_time_filter,
+            )
 
     def validate(
         self,
@@ -633,7 +661,12 @@ class RuntimeSourceResolver(BaseSourceResolver):
                 target_kind="source",
                 disabled=(isinstance(target_source, Disabled)),
             )
-        return self.Relation.create_from(self.config, target_source, limit=self.resolve_limit)
+        return self.Relation.create_from(
+            self.config,
+            target_source,
+            limit=self.resolve_limit,
+            event_time_filter=self.resolve_event_time_filter,
+        )
 
 
 class RuntimeUnitTestSourceResolver(BaseSourceResolver):
