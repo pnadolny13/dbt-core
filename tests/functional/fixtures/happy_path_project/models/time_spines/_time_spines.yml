@@ -1,0 +1,11 @@
+time_spines:
+  - name: time_spine_day
+    model: ref('metricflow_time_spine')
+    primary_column:
+      name: date_day
+      time_granularity: day
+  - name: time_spine_second
+    model: ref('metricflow_time_spine_second')
+    primary_column:
+      name: ts_second
+      time_granularity: second

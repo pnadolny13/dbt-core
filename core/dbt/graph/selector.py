@@ -174,6 +174,8 @@ class NodeSelector(MethodManager):
         elif unique_id in self.manifest.saved_queries:
             saved_query = self.manifest.saved_queries[unique_id]
             return saved_query.config.enabled
+        elif unique_id in self.manifest.time_spines:
+            return True
 
         node = self.manifest.nodes[unique_id]
 

@@ -133,12 +133,20 @@ class TestList:
 
     def expect_model_output(self):
         expectations = {
-            "name": ("ephemeral", "incremental", "inner", "metricflow_time_spine", "outer"),
+            "name": (
+                "ephemeral",
+                "incremental",
+                "inner",
+                "metricflow_time_spine",
+                "metricflow_time_spine_second",
+                "outer",
+            ),
             "selector": (
                 "test.ephemeral",
                 "test.incremental",
                 "test.sub.inner",
-                "test.metricflow_time_spine",
+                "test.time_spines.metricflow_time_spine",
+                "test.time_spines.metricflow_time_spine_second",
                 "test.outer",
             ),
             "json": (
@@ -289,9 +297,51 @@ class TestList:
                         "contract": {"enforced": False, "alias_types": True},
                         "access": "protected",
                     },
-                    "original_file_path": normalize("models/metricflow_time_spine.sql"),
+                    "original_file_path": normalize(
+                        "models/time_spines/metricflow_time_spine.sql"
+                    ),
                     "unique_id": "model.test.metricflow_time_spine",
                     "alias": "metricflow_time_spine",
+                    "resource_type": "model",
+                },
+                {
+                    "name": "metricflow_time_spine_second",
+                    "package_name": "test",
+                    "depends_on": {
+                        "nodes": [],
+                        "macros": ["macro.dbt.current_timestamp", "macro.dbt.date_trunc"],
+                    },
+                    "tags": [],
+                    "config": {
+                        "enabled": True,
+                        "group": None,
+                        "materialized": "view",
+                        "post-hook": [],
+                        "tags": [],
+                        "pre-hook": [],
+                        "quoting": {},
+                        "column_types": {},
+                        "persist_docs": {},
+                        "full_refresh": None,
+                        "unique_key": None,
+                        "on_schema_change": "ignore",
+                        "on_configuration_change": "apply",
+                        "database": None,
+                        "schema": None,
+                        "alias": None,
+                        "meta": {},
+                        "grants": {},
+                        "packages": [],
+                        "incremental_strategy": None,
+                        "docs": {"node_color": None, "show": True},
+                        "contract": {"enforced": False, "alias_types": True},
+                        "access": "protected",
+                    },
+                    "original_file_path": normalize(
+                        "models/time_spines/metricflow_time_spine_second.sql"
+                    ),
+                    "unique_id": "model.test.metricflow_time_spine_second",
+                    "alias": "metricflow_time_spine_second",
                     "resource_type": "model",
                 },
                 {
@@ -337,7 +387,8 @@ class TestList:
                 self.dir("models/ephemeral.sql"),
                 self.dir("models/incremental.sql"),
                 self.dir("models/sub/inner.sql"),
-                self.dir("models/metricflow_time_spine.sql"),
+                self.dir("models/time_spines/metricflow_time_spine.sql"),
+                self.dir("models/time_spines/metricflow_time_spine_second.sql"),
                 self.dir("models/outer.sql"),
             ),
         }
@@ -572,7 +623,8 @@ class TestList:
             "source:test.my_source.my_table",
             "test.not_null_outer_id",
             "test.unique_outer_id",
-            "test.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine_second",
             "test.t",
             "semantic_model:test.my_sm",
             "metric:test.total_outer",
@@ -617,7 +669,8 @@ class TestList:
         assert set(results) == {
             "test.ephemeral",
             "test.outer",
-            "test.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine_second",
             "test.incremental",
         }
 
@@ -637,7 +690,8 @@ class TestList:
             "test.not_null_outer_id",
             "test.outer",
             "test.sub.inner",
-            "test.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine_second",
             "test.t",
             "test.unique_outer_id",
         }
@@ -657,7 +711,8 @@ class TestList:
             "test.incremental",
             "test.not_null_outer_id",
             "test.outer",
-            "test.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine_second",
             "test.sub.inner",
             "test.t",
         }
@@ -692,7 +747,8 @@ class TestList:
             "test.not_null_outer_id",
             "test.outer",
             "test.sub.inner",
-            "test.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine_second",
             "test.t",
             "test.unique_outer_id",
         }
@@ -706,7 +762,8 @@ class TestList:
             "test.incremental",
             "test.outer",
             "test.sub.inner",
-            "test.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine",
+            "test.time_spines.metricflow_time_spine_second",
         }
         del os.environ["DBT_EXCLUDE_RESOURCE_TYPES"]
 

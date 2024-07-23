@@ -878,7 +878,6 @@ class SavedQueryParser(YamlReader):
         return ParseResult()
 
 
-# TODO: import this parser somewhere to be used
 class TimeSpineParser(YamlReader):
     def __init__(self, schema_parser: SchemaParser, yaml: YamlBlock) -> None:
         super().__init__(schema_parser, yaml, "time_spines")

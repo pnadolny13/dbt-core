@@ -261,6 +261,12 @@ class SchemaParser(SimpleParser[YamlBlock, ModelNode]):
                 saved_query_parser = SavedQueryParser(self, yaml_block)
                 saved_query_parser.parse()
 
+            if "time_spines" in dct:
+                from dbt.parser.schema_yaml_readers import TimeSpineParser
+
+                time_spine_parser = TimeSpineParser(self, yaml_block)
+                time_spine_parser.parse()
+
 
 Parsed = TypeVar("Parsed", UnpatchedSourceDefinition, ParsedNodePatch, ParsedMacroPatch)
 NodeTarget = TypeVar("NodeTarget", UnparsedNodeUpdate, UnparsedAnalysisUpdate, UnparsedModelUpdate)
