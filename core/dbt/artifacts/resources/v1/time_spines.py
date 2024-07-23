@@ -17,7 +17,7 @@ from dbt_semantic_interfaces.type_enums.time_granularity import TimeGranularity
 
 @dataclass
 class TimeSpinePrimaryColumn(dbtClassMixin):
-    """The column in the time spine that maps to a standard granularityf."""
+    """The column in the time spine that maps to a standard granularity."""
 
     name: str
     time_granularity: TimeGranularity
@@ -41,7 +41,7 @@ class TimeSpine(GraphResource):
     """Describes a table that contains dates at a specific time grain.
 
     One column must map to a standard granularity (one of the TimeGranularity enum members). Others might represent
-    custom granularity columns. Custom granularity columns are not yet implemented.
+    custom granularity columns. Custom granularity columns are not yet implemented in parser.
     """
 
     model: str

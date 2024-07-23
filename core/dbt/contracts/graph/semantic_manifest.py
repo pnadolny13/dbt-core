@@ -1,4 +1,4 @@
-from typing import List, Optional, Set
+from typing import List, Optional
 
 from dbt.constants import LEGACY_TIME_SPINE_MODEL_NAME
 from dbt.contracts.graph.manifest import Manifest
@@ -71,23 +71,13 @@ class SemanticManifest:
         time_spines = list(self.manifest.time_spines.values())
 
         pydantic_time_spines: List[PydanticTimeSpine] = []
-        time_spine_models_not_found: Set[str] = set()
         daily_time_spine: Optional[TimeSpine] = None
         for time_spine in time_spines:
             # Assertion for type checker
             assert time_spine.node_relation, (
                 f"Node relation should have been set for time time spine {time_spine.name} during "
-                "manifest parsing, but it was not found."
+                "manifest parsing, but it was not."
             )
-            time_spine_model = self.manifest.ref_lookup.find(
-                time_spine.node_relation.alias, None, None, self.manifest
-            )
-            if not time_spine_model:
-                time_spine_models_not_found.add(time_spine.node_relation.alias)
-            if time_spine_models_not_found:
-                raise ParsingError(
-                    f"Error parsing time spines. Referenced models do not exist: {time_spine_models_not_found}"
-                )
             pydantic_time_spine = PydanticTimeSpine(
                 name=time_spine.name,
                 node_relation=PydanticNodeRelation(

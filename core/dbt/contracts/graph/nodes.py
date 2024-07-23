@@ -1420,7 +1420,7 @@ class Metric(GraphNode, MetricResource):
         # existing when it didn't before is a change!
         # metadata/tags changes are not "changes"
         if old is None:
-            return True  # is this a bug?
+            return True  # TODO: this contradicts the comment above - which is correct?
 
         return (
             self.same_filter(old)
@@ -1502,7 +1502,7 @@ class SemanticModel(GraphNode, SemanticModelResource):
         # existing when it didn't before is a change!
         # metadata/tags changes are not "changes"
         if old is None:
-            return True  # is this a bug?
+            return True  # TODO: this contradicts the comment above - which is correct?
 
         return (
             self.same_model(old)
@@ -1546,7 +1546,7 @@ class TimeSpine(GraphNode, TimeSpineResource):
     def same_contents(self, old: Optional["TimeSpine"]) -> bool:
         # existing when it didn't before is a change!
         if old is None:
-            return False  # is this right?
+            return False
 
         return self.same_model(old) and self.same_primary_column(old)
 

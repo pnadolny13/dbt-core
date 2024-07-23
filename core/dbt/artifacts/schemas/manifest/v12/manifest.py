@@ -161,7 +161,7 @@ class WritableManifest(ArtifactMixin):
     )
     time_spines: Mapping[UniqueID, TimeSpine] = field(
         metadata=dict(description=("The time spine models defined in the dbt project.")),
-        default_factory=dict,  # how do all the other fields succeed without a default?
+        default_factory=dict,
     )
 
     @classmethod

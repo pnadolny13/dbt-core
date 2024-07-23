@@ -186,7 +186,6 @@ class RefableLookup(dbtClassMixin):
         version: Optional[NodeVersion],
         node: Optional[GraphMemberNode] = None,
     ):
-        print(self.storage)
         if version:
             key = f"{key}.v{version}"
 

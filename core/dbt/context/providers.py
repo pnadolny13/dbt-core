@@ -1803,7 +1803,6 @@ def generate_parse_semantic_models(
     }
 
 
-# applies to TimeSpines
 class TimeSpineRefResolver(BaseResolver):
     def __call__(self, *args, **kwargs) -> str:
         package = None
