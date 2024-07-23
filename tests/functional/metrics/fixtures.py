@@ -102,6 +102,33 @@ metricflow_time_spine_sql = """
 SELECT to_date('02/20/2023, 'mm/dd/yyyy') as date_day
 """
 
+metricflow_time_spine_second_sql = """
+SELECT to_datetime('02/20/2023, 'mm/dd/yyyy hh:mm:ss') as ts_second
+"""
+
+time_spines_yml = """
+time_spines:
+  - name: time_spine_second
+    model: ref('mf_time_spine_second')
+    primary_column:
+      name: ts_second
+      time_granularity: second
+  - name: time_spine_day
+    model: ref('mf_time_spine_day')
+    primary_column:
+      name: date_day
+      time_granularity: day
+"""
+
+bad_time_spine_yml = """
+time_spines:
+  - name: bad_model_ref
+    model: ref('doesnt_exist')
+    primary_column:
+      name: stuff
+      time_granularity: day
+"""
+
 models_people_metrics_yml = """
 version: 2
 

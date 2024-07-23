@@ -1,10 +1,11 @@
 import time
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from dbt.artifacts.resources.base import GraphResource
 from dbt.artifacts.resources.v1.components import DependsOn, RefArgs
 from dbt.artifacts.resources.v1.semantic_model import NodeRelation
+from dbt_common.contracts.config.base import BaseConfig, CompareBehavior, MergeBehavior
 from dbt_common.dataclass_schema import dbtClassMixin
 from dbt_semantic_interfaces.type_enums.time_granularity import TimeGranularity
 
@@ -23,6 +24,19 @@ class TimeSpinePrimaryColumn(dbtClassMixin):
 
 
 @dataclass
+class TimeSpineConfig(BaseConfig):
+    enabled: bool = True
+    group: Optional[str] = field(
+        default=None,
+        metadata=CompareBehavior.Exclude.meta(),
+    )
+    meta: Dict[str, Any] = field(
+        default_factory=dict,
+        metadata=MergeBehavior.Update.meta(),
+    )
+
+
+@dataclass
 class TimeSpine(GraphResource):
     """Describes a table that contains dates at a specific time grain.
 
@@ -36,3 +50,4 @@ class TimeSpine(GraphResource):
     depends_on: DependsOn = field(default_factory=DependsOn)
     refs: List[RefArgs] = field(default_factory=list)
     created_at: float = field(default_factory=lambda: time.time())
+    config: TimeSpineConfig = field(default_factory=TimeSpineConfig)

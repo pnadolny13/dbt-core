@@ -1090,7 +1090,6 @@ def manifest(
     saved_queries,
     time_spines,
 ) -> Manifest:
-    print(nodes)
     return make_manifest(
         nodes=nodes,
         sources=sources,
