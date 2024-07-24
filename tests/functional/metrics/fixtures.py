@@ -113,6 +113,7 @@ metrics:
     type: simple
     type_params:
       measure: people
+    time_granularity: month
     config:
       meta:
         my_meta_config: 'config'
@@ -742,6 +743,59 @@ semantic_models:
     defaults:
       agg_time_dimension: purchased_at
 
+"""
+
+cumulative_metric_yml = """
+version: 2
+metrics:
+    - name: weekly_visits
+      label: Rolling sum of visits over the last 7 days
+      type: cumulative
+      type_params:
+        measure: num_visits
+        cumulative_type_params:
+          window: 7 days
+          period_agg: average
+    - name: cumulative_orders
+      label: Rolling total of orders (all time)
+      type: cumulative
+      type_params:
+        measure: num_orders
+        cumulative_type_params:
+          period_agg: last
+    - name: orders_ytd
+      label: Total orders since the start of the year
+      type: cumulative
+      type_params:
+        measure: num_orders
+        cumulative_type_params:
+          grain_to_date: year
+          period_agg: first
+    - name: monthly_orders
+      label: Orders in the past month
+      type: cumulative
+      type_params:
+        measure: num_orders
+        window: 1 month
+        cumulative_type_params:
+          period_agg: average
+    - name: yearly_orders
+      label: Orders in the past year
+      type: cumulative
+      type_params:
+        measure: num_orders
+        window: 1 year
+    - name: visits_mtd
+      label: Visits since start of month
+      type: cumulative
+      type_params:
+        measure: num_visits
+        grain_to_date: month
+    - name: cumulative_visits
+      label: Rolling total of visits (all time)
+      type: cumulative
+      type_params:
+        measure: num_visits
 """
 
 conversion_metric_yml = """

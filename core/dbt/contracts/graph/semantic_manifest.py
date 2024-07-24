@@ -1,9 +1,17 @@
+from dbt.constants import TIME_SPINE_MODEL_NAME
+from dbt.events.types import SemanticValidationFailure
+from dbt.exceptions import ParsingError
+from dbt_common.clients.system import write_file
+from dbt_common.events.base_types import EventLevel
+from dbt_common.events.functions import fire_event
 from dbt_semantic_interfaces.implementations.metric import PydanticMetric
 from dbt_semantic_interfaces.implementations.project_configuration import (
     PydanticProjectConfiguration,
 )
 from dbt_semantic_interfaces.implementations.saved_query import PydanticSavedQuery
-from dbt_semantic_interfaces.implementations.semantic_manifest import PydanticSemanticManifest
+from dbt_semantic_interfaces.implementations.semantic_manifest import (
+    PydanticSemanticManifest,
+)
 from dbt_semantic_interfaces.implementations.semantic_model import PydanticSemanticModel
 from dbt_semantic_interfaces.implementations.time_spine_table_configuration import (
     PydanticTimeSpineTableConfiguration,
@@ -12,12 +20,6 @@ from dbt_semantic_interfaces.type_enums import TimeGranularity
 from dbt_semantic_interfaces.validations.semantic_manifest_validator import (
     SemanticManifestValidator,
 )
-
-from dbt_common.clients.system import write_file
-from dbt_common.events.base_types import EventLevel
-from dbt_common.events.functions import fire_event
-from dbt.events.types import SemanticValidationFailure
-from dbt.exceptions import ParsingError
 
 
 class SemanticManifest:
@@ -80,8 +82,7 @@ class SemanticManifest:
         # Look for time-spine table model and create time spine table configuration
         if self.manifest.semantic_models:
             # Get model for time_spine_table
-            time_spine_model_name = "metricflow_time_spine"
-            model = self.manifest.ref_lookup.find(time_spine_model_name, None, None, self.manifest)
+            model = self.manifest.ref_lookup.find(TIME_SPINE_MODEL_NAME, None, None, self.manifest)
             if not model:
                 raise ParsingError(
                     "The semantic layer requires a 'metricflow_time_spine' model in the project, but none was found. "

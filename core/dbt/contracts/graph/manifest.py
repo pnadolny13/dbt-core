@@ -1,31 +1,49 @@
 import enum
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
-from itertools import chain, islice
-from mashumaro.mixins.msgpack import DataClassMessagePackMixin
+from itertools import chain
 from multiprocessing.synchronize import Lock
 from typing import (
+    Any,
+    Callable,
+    ClassVar,
     DefaultDict,
     Dict,
+    Generic,
     List,
-    Optional,
-    Union,
     Mapping,
     MutableMapping,
-    Any,
+    Optional,
     Set,
     Tuple,
     TypeVar,
-    Callable,
-    Generic,
-    AbstractSet,
-    ClassVar,
+    Union,
 )
+
 from typing_extensions import Protocol
 
-from dbt import deprecations
-from dbt import tracking
+import dbt_common.exceptions
+import dbt_common.utils
+from dbt import deprecations, tracking
+from dbt.adapters.exceptions import (
+    DuplicateMacroInPackageError,
+    DuplicateMaterializationNameError,
+)
+from dbt.adapters.factory import get_adapter_package_names
+
+# to preserve import paths
+from dbt.artifacts.resources import BaseResource, DeferRelation, NodeVersion
+from dbt.artifacts.resources.v1.config import NodeConfig
+from dbt.artifacts.schemas.manifest import ManifestMetadata, UniqueID, WritableManifest
+from dbt.contracts.files import (
+    AnySourceFile,
+    FileHash,
+    FixtureSourceFile,
+    SchemaSourceFile,
+    SourceFile,
+)
 from dbt.contracts.graph.nodes import (
+    RESOURCE_CLASS_TO_NODE_CLASS,
     BaseNode,
     Documentation,
     Exposure,
@@ -36,50 +54,34 @@ from dbt.contracts.graph.nodes import (
     ManifestNode,
     Metric,
     ModelNode,
-    ResultNode,
     SavedQuery,
+    SeedNode,
     SemanticModel,
     SourceDefinition,
-    UnpatchedSourceDefinition,
     UnitTestDefinition,
     UnitTestFileFixture,
-    RESOURCE_CLASS_TO_NODE_CLASS,
+    UnpatchedSourceDefinition,
 )
 from dbt.contracts.graph.unparsed import SourcePatch, UnparsedVersion
-from dbt.flags import get_flags
-
-# to preserve import paths
-from dbt.artifacts.resources import (
-    NodeVersion,
-    DeferRelation,
-    BaseResource,
-)
-from dbt.artifacts.schemas.manifest import WritableManifest, ManifestMetadata, UniqueID
-from dbt.contracts.files import (
-    SourceFile,
-    SchemaSourceFile,
-    FileHash,
-    AnySourceFile,
-    FixtureSourceFile,
-)
 from dbt.contracts.util import SourceKey
-from dbt_common.dataclass_schema import dbtClassMixin
-
+from dbt.events.types import UnpinnedRefNewVersionAvailable
 from dbt.exceptions import (
+    AmbiguousResourceNameRefError,
     CompilationError,
     DuplicateResourceNameError,
-    AmbiguousResourceNameRefError,
 )
-from dbt.adapters.exceptions import DuplicateMacroInPackageError, DuplicateMaterializationNameError
-from dbt_common.helper_types import PathSet
-from dbt_common.events.functions import fire_event
-from dbt_common.events.contextvars import get_node_info
-from dbt.events.types import MergedFromState, UnpinnedRefNewVersionAvailable
-from dbt.node_types import NodeType, AccessType, REFABLE_NODE_TYPES, VERSIONED_NODE_TYPES
+from dbt.flags import get_flags
 from dbt.mp_context import get_mp_context
-import dbt_common.utils
-import dbt_common.exceptions
-
+from dbt.node_types import (
+    REFABLE_NODE_TYPES,
+    VERSIONED_NODE_TYPES,
+    AccessType,
+    NodeType,
+)
+from dbt_common.dataclass_schema import dbtClassMixin
+from dbt_common.events.contextvars import get_node_info
+from dbt_common.events.functions import fire_event
+from dbt_common.helper_types import PathSet
 
 PackageName = str
 DocName = str
@@ -718,9 +720,6 @@ class MacroMethods:
         filter: Optional[Callable[[MacroCandidate], bool]] = None,
     ) -> CandidateList:
         """Find macros by their name."""
-        # avoid an import cycle
-        from dbt.adapters.factory import get_adapter_package_names
-
         candidates: CandidateList = CandidateList()
 
         macros_by_name = self.get_macros_by_name()
@@ -802,7 +801,7 @@ ResourceClassT = TypeVar("ResourceClassT", bound="BaseResource")
 
 
 @dataclass
-class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
+class Manifest(MacroMethods, dbtClassMixin):
     """The manifest for the full graph, after parsing and during compilation."""
 
     # These attributes are both positional and by keyword. If an attribute
@@ -869,7 +868,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         metadata={"serialize": lambda x: None, "deserialize": lambda x: None},
     )
 
-    def __pre_serialize__(self):
+    def __pre_serialize__(self, context: Optional[Dict] = None):
         # serialization won't work with anything except an empty source_patches because
         # tuple keys are not supported, so ensure it's empty
         self.source_patches = {}
@@ -986,6 +985,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.metrics.values(),
             self.semantic_models.values(),
             self.saved_queries.values(),
+            self.unit_tests.values(),
         )
         for resource in all_resources:
             resource_type_plural = resource.resource_type.pluralize()
@@ -1092,6 +1092,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             metrics=cls._map_resources_to_map_nodes(writable_manifest.metrics),
             groups=cls._map_resources_to_map_nodes(writable_manifest.groups),
             semantic_models=cls._map_resources_to_map_nodes(writable_manifest.semantic_models),
+            saved_queries=cls._map_resources_to_map_nodes(writable_manifest.saved_queries),
             selectors={
                 selector_id: selector
                 for selector_id, selector in writable_manifest.selectors.items()
@@ -1466,49 +1467,35 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             node.package_name != target_model.package_name and restrict_package_access
         )
 
-    # Called by GraphRunnableTask.defer_to_manifest
-    def merge_from_artifact(
-        self,
-        adapter,
-        other: "Manifest",
-        selected: AbstractSet[UniqueID],
-        favor_state: bool = False,
-    ) -> None:
-        """Given the selected unique IDs and a writable manifest, update this
-        manifest by replacing any unselected nodes with their counterpart.
+    # Called in GraphRunnableTask.before_run, RunTask.before_run, CloneTask.before_run
+    def merge_from_artifact(self, other: "Manifest") -> None:
+        """Update this manifest by adding the 'defer_relation' attribute to all nodes
+        with a counterpart in the stateful manifest used for deferral.
 
         Only non-ephemeral refable nodes are examined.
         """
         refables = set(REFABLE_NODE_TYPES)
-        merged = set()
         for unique_id, node in other.nodes.items():
             current = self.nodes.get(unique_id)
-            if current and (
-                node.resource_type in refables
-                and not node.is_ephemeral
-                and unique_id not in selected
-                and (
-                    not adapter.get_relation(current.database, current.schema, current.identifier)
-                    or favor_state
-                )
-            ):
-                merged.add(unique_id)
-                self.nodes[unique_id] = replace(node, deferred=True)
-
-            # for all other nodes, add 'defer_relation'
-            elif current and node.resource_type in refables and not node.is_ephemeral:
+            if current and node.resource_type in refables and not node.is_ephemeral:
+                assert isinstance(node.config, NodeConfig)  # this makes mypy happy
                 defer_relation = DeferRelation(
-                    node.database, node.schema, node.alias, node.relation_name
+                    database=node.database,
+                    schema=node.schema,
+                    alias=node.alias,
+                    relation_name=node.relation_name,
+                    resource_type=node.resource_type,
+                    name=node.name,
+                    description=node.description,
+                    compiled_code=(node.compiled_code if not isinstance(node, SeedNode) else None),
+                    meta=node.meta,
+                    tags=node.tags,
+                    config=node.config,
                 )
                 self.nodes[unique_id] = replace(current, defer_relation=defer_relation)
 
-        # Rebuild the flat_graph, which powers the 'graph' context variable,
-        # now that we've deferred some nodes
+        # Rebuild the flat_graph, which powers the 'graph' context variable
         self.build_flat_graph()
-
-        # log up to 5 items
-        sample = list(islice(merged, 5))
-        fire_event(MergedFromState(num_merged=len(merged), sample=sample))
 
     # Methods that were formerly in ParseResult
     def add_macro(self, source_file: SourceFile, macro: Macro):
@@ -1578,13 +1565,15 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         self.exposures[exposure.unique_id] = exposure
         source_file.exposures.append(exposure.unique_id)
 
-    def add_metric(self, source_file: SchemaSourceFile, metric: Metric, generated: bool = False):
+    def add_metric(
+        self, source_file: SchemaSourceFile, metric: Metric, generated_from: Optional[str] = None
+    ):
         _check_duplicates(metric, self.metrics)
         self.metrics[metric.unique_id] = metric
-        if not generated:
+        if not generated_from:
             source_file.metrics.append(metric.unique_id)
         else:
-            source_file.generated_metrics.append(metric.unique_id)
+            source_file.add_metrics_from_measures(generated_from, metric.unique_id)
 
     def add_group(self, source_file: SchemaSourceFile, group: Group):
         _check_duplicates(group, self.groups)
@@ -1598,7 +1587,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         else:
             self.disabled[node.unique_id] = [node]
 
-    def add_disabled(self, source_file: AnySourceFile, node: ResultNode, test_from=None):
+    def add_disabled(self, source_file: AnySourceFile, node: GraphMemberNode, test_from=None):
         self.add_disabled_nofile(node)
         if isinstance(source_file, SchemaSourceFile):
             if isinstance(node, GenericTestNode):
@@ -1689,9 +1678,9 @@ class MacroManifest(MacroMethods):
         self.macros = macros
         self.metadata = ManifestMetadata(
             user_id=tracking.active_user.id if tracking.active_user else None,
-            send_anonymous_usage_stats=get_flags().SEND_ANONYMOUS_USAGE_STATS
-            if tracking.active_user
-            else None,
+            send_anonymous_usage_stats=(
+                get_flags().SEND_ANONYMOUS_USAGE_STATS if tracking.active_user else None
+            ),
         )
         # This is returned by the 'graph' context property
         # in the ProviderContext class.

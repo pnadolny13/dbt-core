@@ -1,95 +1,93 @@
-import os
-from datetime import datetime
-from dataclasses import dataclass, field
 import hashlib
-
-from mashumaro.types import SerializableType
+import os
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import (
-    Optional,
-    Union,
-    List,
-    Dict,
     Any,
+    Dict,
+    Iterator,
+    List,
+    Literal,
+    Optional,
     Sequence,
     Tuple,
     Type,
-    Iterator,
-    Literal,
+    Union,
     get_args,
 )
 
-from dbt import deprecations
-from dbt_common.contracts.constraints import ConstraintType
+from mashumaro.types import SerializableType
 
-from dbt_common.clients.system import write_file
+from dbt import deprecations
+from dbt.adapters.base import ConstraintSupport
+from dbt.adapters.factory import get_adapter_constraint_support
+from dbt.artifacts.resources import Analysis as AnalysisResource
+from dbt.artifacts.resources import (
+    BaseResource,
+    ColumnInfo,
+    CompiledResource,
+    DependsOn,
+    Docs,
+)
+from dbt.artifacts.resources import Documentation as DocumentationResource
+from dbt.artifacts.resources import Exposure as ExposureResource
+from dbt.artifacts.resources import FileHash
+from dbt.artifacts.resources import GenericTest as GenericTestResource
+from dbt.artifacts.resources import GraphResource
+from dbt.artifacts.resources import Group as GroupResource
+from dbt.artifacts.resources import HasRelationMetadata as HasRelationMetadataResource
+from dbt.artifacts.resources import HookNode as HookNodeResource
+from dbt.artifacts.resources import InjectedCTE
+from dbt.artifacts.resources import Macro as MacroResource
+from dbt.artifacts.resources import MacroArgument
+from dbt.artifacts.resources import Metric as MetricResource
+from dbt.artifacts.resources import MetricInputMeasure
+from dbt.artifacts.resources import Model as ModelResource
+from dbt.artifacts.resources import (
+    ModelConfig,
+    NodeConfig,
+    NodeVersion,
+    ParsedResource,
+    ParsedResourceMandatory,
+)
+from dbt.artifacts.resources import Quoting as QuotingResource
+from dbt.artifacts.resources import SavedQuery as SavedQueryResource
+from dbt.artifacts.resources import Seed as SeedResource
+from dbt.artifacts.resources import SemanticModel as SemanticModelResource
+from dbt.artifacts.resources import SingularTest as SingularTestResource
+from dbt.artifacts.resources import Snapshot as SnapshotResource
+from dbt.artifacts.resources import SourceDefinition as SourceDefinitionResource
+from dbt.artifacts.resources import SqlOperation as SqlOperationResource
+from dbt.artifacts.resources import UnitTestDefinition as UnitTestDefinitionResource
+from dbt.contracts.graph.model_config import UnitTestNodeConfig
+from dbt.contracts.graph.node_args import ModelNodeArgs
 from dbt.contracts.graph.unparsed import (
     HasYamlMetadata,
     TestDef,
+    UnitTestOverrides,
+    UnparsedColumn,
     UnparsedSourceDefinition,
     UnparsedSourceTableDefinition,
-    UnparsedColumn,
-    UnitTestOverrides,
 )
-from dbt.contracts.graph.model_config import (
-    UnitTestNodeConfig,
-    EmptySnapshotConfig,
-)
-from dbt.contracts.graph.node_args import ModelNodeArgs
-from dbt_common.events.functions import warn_or_error
-from dbt.exceptions import ParsingError, ContractBreakingChangeError, ValidationError
 from dbt.events.types import (
-    SeedIncreased,
-    SeedExceedsLimitSamePath,
     SeedExceedsLimitAndPathChanged,
     SeedExceedsLimitChecksumChanged,
+    SeedExceedsLimitSamePath,
+    SeedIncreased,
     UnversionedBreakingChange,
 )
-from dbt_common.events.contextvars import set_log_contextvars
+from dbt.exceptions import ContractBreakingChangeError, ParsingError, ValidationError
 from dbt.flags import get_flags
 from dbt.node_types import (
-    NodeType,
-    AccessType,
     REFABLE_NODE_TYPES,
     VERSIONED_NODE_TYPES,
+    AccessType,
+    NodeType,
 )
-
-
-from dbt.artifacts.resources import (
-    BaseResource,
-    DependsOn,
-    Docs,
-    Exposure as ExposureResource,
-    MacroArgument,
-    Documentation as DocumentationResource,
-    Macro as MacroResource,
-    Metric as MetricResource,
-    NodeVersion,
-    Group as GroupResource,
-    GraphResource,
-    SavedQuery as SavedQueryResource,
-    SemanticModel as SemanticModelResource,
-    ParsedResourceMandatory,
-    ParsedResource,
-    CompiledResource,
-    HasRelationMetadata as HasRelationMetadataResource,
-    FileHash,
-    NodeConfig,
-    ColumnInfo,
-    InjectedCTE,
-    Analysis as AnalysisResource,
-    HookNode as HookNodeResource,
-    Model as ModelResource,
-    ModelConfig,
-    SqlOperation as SqlOperationResource,
-    Seed as SeedResource,
-    SingularTest as SingularTestResource,
-    GenericTest as GenericTestResource,
-    Snapshot as SnapshotResource,
-    Quoting as QuotingResource,
-    SourceDefinition as SourceDefinitionResource,
-    MetricInputMeasure,
-    UnitTestDefinition as UnitTestDefinitionResource,
-)
+from dbt_common.clients.system import write_file
+from dbt_common.contracts.constraints import ConstraintType
+from dbt_common.events.contextvars import set_log_contextvars
+from dbt_common.events.functions import warn_or_error
 
 # =====================================================================
 # This contains the classes for all of the nodes and node-like objects
@@ -262,8 +260,8 @@ class ParsedNode(ParsedResource, NodeInfoMixin, ParsedNodeMandatory, Serializabl
     def _serialize(self):
         return self.to_dict()
 
-    def __post_serialize__(self, dct):
-        dct = super().__post_serialize__(dct)
+    def __post_serialize__(self, dct: Dict, context: Optional[Dict] = None):
+        dct = super().__post_serialize__(dct, context)
         if "_event_status" in dct:
             del dct["_event_status"]
         return dct
@@ -474,6 +472,13 @@ class ModelNode(ModelResource, CompiledNode):
         return self.version is not None and self.version == self.latest_version
 
     @property
+    def is_past_deprecation_date(self) -> bool:
+        return (
+            self.deprecation_date is not None
+            and self.deprecation_date < datetime.now().astimezone()
+        )
+
+    @property
     def search_name(self):
         if self.version is None:
             return self.name
@@ -574,6 +579,42 @@ class ModelNode(ModelResource, CompiledNode):
             data = contract_state.encode("utf-8")
             self.contract.checksum = hashlib.new("sha256", data).hexdigest()
 
+    def same_contract_removed(self) -> bool:
+        """
+        self: the removed (deleted, renamed, or disabled) model node
+        """
+        # If the contract wasn't previously enforced, no contract change has occurred
+        if self.contract.enforced is False:
+            return True
+
+        # Removed node is past its deprecation_date, so deletion does not constitute a contract change
+        if self.is_past_deprecation_date:
+            return True
+
+        # Disabled, deleted, or renamed node with previously enforced contract.
+        if not self.config.enabled:
+            breaking_change = f"Contracted model '{self.unique_id}' was disabled."
+        else:
+            breaking_change = f"Contracted model '{self.unique_id}' was deleted or renamed."
+
+        if self.version is None:
+            warn_or_error(
+                UnversionedBreakingChange(
+                    breaking_changes=[breaking_change],
+                    model_name=self.name,
+                    model_file_path=self.original_file_path,
+                ),
+                node=self,
+            )
+            return False
+        else:
+            raise (
+                ContractBreakingChangeError(
+                    breaking_changes=[breaking_change],
+                    node=self,
+                )
+            )
+
     def same_contract(self, old, adapter_type=None) -> bool:
         # If the contract wasn't previously enforced:
         if old.contract.enforced is False and self.contract.enforced is False:
@@ -595,19 +636,15 @@ class ModelNode(ModelResource, CompiledNode):
         contract_enforced_disabled: bool = False
         columns_removed: List[str] = []
         column_type_changes: List[Dict[str, str]] = []
-        enforced_column_constraint_removed: List[
-            Dict[str, str]
-        ] = []  # column_name, constraint_type
+        enforced_column_constraint_removed: List[Dict[str, str]] = (
+            []
+        )  # column_name, constraint_type
         enforced_model_constraint_removed: List[Dict[str, Any]] = []  # constraint_type, columns
         materialization_changed: List[str] = []
 
         if old.contract.enforced is True and self.contract.enforced is False:
             # Breaking change: the contract was previously enforced, and it no longer is
             contract_enforced_disabled = True
-
-        # TODO: this avoid the circular imports but isn't ideal
-        from dbt.adapters.factory import get_adapter_constraint_support
-        from dbt.adapters.base import ConstraintSupport
 
         constraint_support = get_adapter_constraint_support(adapter_type)
         column_constraints_exist = False
@@ -877,6 +914,11 @@ Error raised for '{self.unique_id}', which has these hooks defined: \n{hook_list
         return "sql"
 
 
+#    @property
+#    def compiled_code(self):
+#        return None
+
+
 # ====================================
 # Singular Test node
 # ====================================
@@ -1000,19 +1042,6 @@ class UnitTestFileFixture(BaseNode):
 
 
 @dataclass
-class IntermediateSnapshotNode(CompiledNode):
-    # at an intermediate stage in parsing, where we've built something better
-    # than an unparsed node for rendering in parse mode, it's pretty possible
-    # that we won't have critical snapshot-related information that is only
-    # defined in config blocks. To fix that, we have an intermediate type that
-    # uses a regular node config, which the snapshot parser will then convert
-    # into a full ParsedSnapshotNode after rendering. Note: it currently does
-    # not work to set snapshot config in schema files because of the validation.
-    resource_type: Literal[NodeType.Snapshot]
-    config: EmptySnapshotConfig = field(default_factory=EmptySnapshotConfig)
-
-
-@dataclass
 class SnapshotNode(SnapshotResource, CompiledNode):
     @classmethod
     def resource_class(cls) -> Type[SnapshotResource]:
@@ -1091,7 +1120,7 @@ class UnpatchedSourceDefinition(BaseNode):
     def get_source_representation(self):
         return f'source("{self.source.name}", "{self.table.name}")'
 
-    def validate_data_tests(self):
+    def validate_data_tests(self, is_root_project: bool):
         """
         sources parse tests differently than models, so we need to do some validation
         here where it's done in the PatchParser for other nodes
@@ -1102,11 +1131,12 @@ class UnpatchedSourceDefinition(BaseNode):
                 "Invalid test config: cannot have both 'tests' and 'data_tests' defined"
             )
         if self.tests:
-            deprecations.warn(
-                "project-test-config",
-                deprecated_path="tests",
-                exp_path="data_tests",
-            )
+            if is_root_project:
+                deprecations.warn(
+                    "project-test-config",
+                    deprecated_path="tests",
+                    exp_path="data_tests",
+                )
             self.data_tests.extend(self.tests)
             self.tests.clear()
 
@@ -1117,11 +1147,12 @@ class UnpatchedSourceDefinition(BaseNode):
                     "Invalid test config: cannot have both 'tests' and 'data_tests' defined"
                 )
             if column.tests:
-                deprecations.warn(
-                    "project-test-config",
-                    deprecated_path="tests",
-                    exp_path="data_tests",
-                )
+                if is_root_project:
+                    deprecations.warn(
+                        "project-test-config",
+                        deprecated_path="tests",
+                        exp_path="data_tests",
+                    )
                 column.data_tests.extend(column.tests)
                 column.tests.clear()
 
@@ -1139,7 +1170,6 @@ class UnpatchedSourceDefinition(BaseNode):
         return [] if self.table.columns is None else self.table.columns
 
     def get_tests(self) -> Iterator[Tuple[Dict[str, Any], Optional[UnparsedColumn]]]:
-        self.validate_data_tests()
         for data_test in self.data_tests:
             yield normalize_test(data_test), None
 
@@ -1520,12 +1550,11 @@ class SavedQuery(NodeInfoMixin, GraphNode, SavedQueryResource):
         return self.group == old.group
 
     def same_exports(self, old: "SavedQuery") -> bool:
-        # TODO: This isn't currently used in `same_contents` (nor called anywhere else)
         if len(self.exports) != len(old.exports):
             return False
 
         # exports should be in the same order, so we zip them for easy iteration
-        for (old_export, new_export) in zip(old.exports, self.exports):
+        for old_export, new_export in zip(old.exports, self.exports):
             if not (
                 old_export.name == new_export.name
                 and old_export.config.export_as == new_export.config.export_as
@@ -1550,6 +1579,7 @@ class SavedQuery(NodeInfoMixin, GraphNode, SavedQueryResource):
             and self.same_label(old)
             and self.same_config(old)
             and self.same_group(old)
+            and self.same_exports(old)
             and True
         )
 

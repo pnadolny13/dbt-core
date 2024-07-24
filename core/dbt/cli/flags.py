@@ -6,20 +6,22 @@ from pathlib import Path
 from pprint import pformat as pf
 from typing import Any, Callable, Dict, List, Optional, Set, Union
 
-from click import Context, get_current_context, Parameter
-from click.core import Command as ClickCommand, Group, ParameterSource
+from click import Context, Parameter, get_current_context
+from click.core import Command as ClickCommand
+from click.core import Group, ParameterSource
+
 from dbt.cli.exceptions import DbtUsageException
 from dbt.cli.resolvers import default_log_path, default_project_dir
 from dbt.cli.types import Command as CliCommand
 from dbt.config.project import read_project_flags
 from dbt.contracts.project import ProjectFlags
+from dbt.deprecations import renamed_env_var
+from dbt.events import ALL_EVENT_NAMES
 from dbt_common import ui
+from dbt_common.clients import jinja
 from dbt_common.events import functions
 from dbt_common.exceptions import DbtInternalError
-from dbt_common.clients import jinja
-from dbt.deprecations import renamed_env_var
 from dbt_common.helper_types import WarnErrorOptions
-from dbt.events import ALL_EVENT_NAMES
 
 if os.name != "nt":
     # https://bugs.python.org/issue41567
@@ -55,6 +57,7 @@ def convert_config(config_name, config_value):
         ret = WarnErrorOptions(
             include=config_value.get("include", []),
             exclude=config_value.get("exclude", []),
+            silence=config_value.get("silence", []),
             valid_error_names=ALL_EVENT_NAMES,
         )
     return ret
@@ -89,6 +92,8 @@ class Flags:
         # Set the default flags.
         for key, value in FLAGS_DEFAULTS.items():
             object.__setattr__(self, key, value)
+        # Use to handle duplicate params in _assign_params
+        flags_defaults_list = list(FLAGS_DEFAULTS.keys())
 
         if ctx is None:
             ctx = get_current_context()
@@ -170,13 +175,29 @@ class Flags:
                         old_name=dep_param.envvar,
                         new_name=new_param.envvar,
                     )
+                # end deprecated_params
 
                 # Set the flag value.
-                is_duplicate = hasattr(self, param_name.upper())
+                is_duplicate = (
+                    hasattr(self, param_name.upper())
+                    and param_name.upper() not in flags_defaults_list
+                )
+                # First time through, set as though FLAGS_DEFAULTS hasn't been set, so not a duplicate.
+                # Subsequent pass (to process "parent" params) should be treated as duplicates.
+                if param_name.upper() in flags_defaults_list:
+                    flags_defaults_list.remove(param_name.upper())
+                # Note: the following determines whether parameter came from click default,
+                # not from FLAGS_DEFAULTS in __init__.
                 is_default = ctx.get_parameter_source(param_name) == ParameterSource.DEFAULT
+                is_envvar = ctx.get_parameter_source(param_name) == ParameterSource.ENVIRONMENT
+
                 flag_name = (new_name or param_name).upper()
 
-                if (is_duplicate and not is_default) or not is_duplicate:
+                # envvar flags are assigned in either parent or child context if there
+                # isn't an overriding cli command flag.
+                # If the flag has been encountered as a child cli flag, we don't
+                # want to overwrite with parent envvar, since the commandline flag takes precedence.
+                if (is_duplicate and not (is_default or is_envvar)) or not is_duplicate:
                     object.__setattr__(self, flag_name, param_value)
 
                 # Track default assigned params.
@@ -287,6 +308,10 @@ class Flags:
             params_assigned_from_default, ["WARN_ERROR", "WARN_ERROR_OPTIONS"]
         )
 
+        # Handle arguments mutually exclusive with INLINE
+        self._assert_mutually_exclusive(params_assigned_from_default, ["SELECT", "INLINE"])
+        self._assert_mutually_exclusive(params_assigned_from_default, ["SELECTOR", "INLINE"])
+
         # Support lower cased access for legacy code.
         params = set(
             x for x in dir(self) if not callable(getattr(self, x)) and not x.startswith("__")
@@ -313,7 +338,9 @@ class Flags:
         """
         set_flag = None
         for flag in group:
-            flag_set_by_user = flag.lower() not in params_assigned_from_default
+            flag_set_by_user = (
+                hasattr(self, flag) and flag.lower() not in params_assigned_from_default
+            )
             if flag_set_by_user and set_flag:
                 raise DbtUsageException(
                     f"{flag.lower()}: not allowed with argument {set_flag.lower()}"

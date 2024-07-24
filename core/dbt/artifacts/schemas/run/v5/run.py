@@ -1,31 +1,32 @@
-import threading
-from typing import Any, Optional, Iterable, Tuple, Sequence, Dict, TYPE_CHECKING
 import copy
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
+# https://github.com/dbt-labs/dbt-core/issues/10098
+# Needed for Mashumaro serialization of RunResult below
+# TODO: investigate alternative approaches to restore conditional import
+# if TYPE_CHECKING:
+import agate
 
-from dbt.constants import SECRET_ENV_PREFIX
 from dbt.artifacts.resources import CompiledResource
 from dbt.artifacts.schemas.base import (
-    BaseArtifactMetadata,
     ArtifactMixin,
-    schema_version,
+    BaseArtifactMetadata,
     get_artifact_schema_version,
+    schema_version,
 )
 from dbt.artifacts.schemas.results import (
     BaseResult,
-    NodeResult,
-    RunStatus,
-    ResultNode,
     ExecutionResult,
+    NodeResult,
+    ResultNode,
+    RunStatus,
 )
-from dbt_common.clients.system import write_json
 from dbt.exceptions import scrub_secrets
-
-
-if TYPE_CHECKING:
-    import agate
+from dbt_common.clients.system import write_json
+from dbt_common.constants import SECRET_ENV_PREFIX
 
 
 @dataclass
@@ -157,7 +158,8 @@ class RunResultsArtifact(ExecutionResult, ArtifactMixin):
     @classmethod
     def upgrade_schema_version(cls, data):
         """This overrides the "upgrade_schema_version" call in VersionedSchema (via
-        ArtifactMixin) to modify the dictionary passed in from earlier versions of the run_results."""
+        ArtifactMixin) to modify the dictionary passed in from earlier versions of the run_results.
+        """
         run_results_schema_version = get_artifact_schema_version(data)
         # If less than the current version (v5), preprocess contents to match latest schema version
         if run_results_schema_version <= 5:

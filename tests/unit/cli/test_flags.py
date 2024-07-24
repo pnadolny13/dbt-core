@@ -9,9 +9,9 @@ from dbt.cli.flags import Flags
 from dbt.cli.main import cli
 from dbt.cli.types import Command
 from dbt.contracts.project import ProjectFlags
+from dbt.tests.util import rm_file, write_file
 from dbt_common.exceptions import DbtInternalError
 from dbt_common.helper_types import WarnErrorOptions
-from dbt.tests.util import rm_file, write_file
 
 
 class TestFlags:
@@ -379,6 +379,22 @@ class TestFlags:
         flags_b = Flags(child_context_b)
 
         assert flags_a.USE_COLORS == flags_b.USE_COLORS
+
+    def test_global_flag_with_env_var(self, monkeypatch):
+        # The environment variable is used for whichever parent or child
+        # does not have a cli command.
+        # Test that "child" global flag overrides env var
+        monkeypatch.setenv("DBT_QUIET", "0")
+        parent_context = self.make_dbt_context("parent", ["--no-use-colors"])
+        child_context = self.make_dbt_context("child", ["--quiet"], parent_context)
+        flags = Flags(child_context)
+        assert flags.QUIET is True
+
+        # Test that "parent" global flag overrides env var
+        parent_context = self.make_dbt_context("parent", ["--quiet"])
+        child_context = self.make_dbt_context("child", ["--no-use-colors"], parent_context)
+        flags = Flags(child_context)
+        assert flags.QUIET is True
 
     def test_set_project_only_flags(self, project_flags, run_context):
         flags = Flags(run_context, project_flags)

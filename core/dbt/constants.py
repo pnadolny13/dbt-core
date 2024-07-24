@@ -1,6 +1,6 @@
-# TODO: remove SECRET_ENV_PREFIX and import from dbt_common
-SECRET_ENV_PREFIX = "DBT_ENV_SECRET_"
 DEFAULT_ENV_PLACEHOLDER = "DBT_DEFAULT_PLACEHOLDER"
+
+SECRET_PLACEHOLDER = "$$$DBT_SECRET_START$$${}$$$DBT_SECRET_END$$$"
 
 MAXIMUM_SEED_SIZE = 1 * 1024 * 1024
 MAXIMUM_SEED_SIZE_NAME = "1MB"
@@ -15,5 +15,6 @@ DEPENDENCIES_FILE_NAME = "dependencies.yml"
 PACKAGE_LOCK_FILE_NAME = "package-lock.yml"
 MANIFEST_FILE_NAME = "manifest.json"
 SEMANTIC_MANIFEST_FILE_NAME = "semantic_manifest.json"
+TIME_SPINE_MODEL_NAME = "metricflow_time_spine"
 PARTIAL_PARSE_FILE_NAME = "partial_parse.msgpack"
 PACKAGE_LOCK_HASH_KEY = "sha1_hash"

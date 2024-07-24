@@ -8,46 +8,48 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from dbt.compilation import Compiler
-import dbt_common.exceptions.base
 import dbt.exceptions
+import dbt_common.exceptions.base
 from dbt import tracking
+from dbt.artifacts.resources.types import NodeType
+from dbt.artifacts.schemas.results import (
+    NodeStatus,
+    RunningStatus,
+    RunStatus,
+    TimingInfo,
+    collect_timing_info,
+)
+from dbt.artifacts.schemas.run import RunResult
 from dbt.cli.flags import Flags
+from dbt.compilation import Compiler
 from dbt.config import RuntimeConfig
 from dbt.config.profile import read_profile
 from dbt.constants import DBT_PROJECT_FILE_NAME
 from dbt.contracts.graph.manifest import Manifest
-from dbt.artifacts.resources.types import NodeType
-from dbt.artifacts.schemas.results import TimingInfo, collect_timing_info
-from dbt.artifacts.schemas.results import NodeStatus, RunningStatus, RunStatus
-from dbt.artifacts.schemas.run import RunResult
-from dbt_common.events.contextvars import get_node_info
-from dbt_common.events.functions import fire_event
 from dbt.events.types import (
-    SkippingDetails,
-    NodeCompiling,
-    NodeExecuting,
     CatchableExceptionOnRun,
-    InternalErrorOnRun,
     GenericExceptionOnRun,
-    NodeConnectionReleaseError,
+    InternalErrorOnRun,
+    LogDbtProfileError,
+    LogDbtProjectError,
     LogDebugStackTrace,
     LogSkipBecauseError,
-)
-from dbt_common.exceptions import (
-    DbtRuntimeError,
-    DbtInternalError,
-    CompilationError,
-    NotImplementedError,
-)
-from dbt.events.types import (
-    LogDbtProjectError,
-    LogDbtProfileError,
+    NodeCompiling,
+    NodeConnectionReleaseError,
+    NodeExecuting,
+    SkippingDetails,
 )
 from dbt.flags import get_flags
 from dbt.graph import Graph
-from dbt.logger import log_manager
 from dbt.task.printer import print_run_result_error
+from dbt_common.events.contextvars import get_node_info
+from dbt_common.events.functions import fire_event
+from dbt_common.exceptions import (
+    CompilationError,
+    DbtInternalError,
+    DbtRuntimeError,
+    NotImplementedError,
+)
 
 
 def read_profiles(profiles_dir=None):
@@ -68,21 +70,6 @@ def read_profiles(profiles_dir=None):
 class BaseTask(metaclass=ABCMeta):
     def __init__(self, args: Flags) -> None:
         self.args = args
-
-    @classmethod
-    def pre_init_hook(cls, args: Flags):
-        """A hook called before the task is initialized."""
-        if args.log_format == "json":
-            log_manager.format_json()
-        else:
-            log_manager.format_text()
-
-    @classmethod
-    def set_log_format(cls):
-        if get_flags().LOG_FORMAT == "json":
-            log_manager.format_json()
-        else:
-            log_manager.format_text()
 
     @abstractmethod
     def run(self):
@@ -287,9 +274,11 @@ class BaseRunner(metaclass=ABCMeta):
 
     def compile_and_execute(self, manifest, ctx):
         result = None
-        with self.adapter.connection_named(
-            self.node.unique_id, self.node
-        ) if get_flags().INTROSPECT else nullcontext():
+        with (
+            self.adapter.connection_named(self.node.unique_id, self.node)
+            if get_flags().INTROSPECT
+            else nullcontext()
+        ):
             ctx.node.update_event_status(node_status=RunningStatus.Compiling)
             fire_event(
                 NodeCompiling(
@@ -423,13 +412,14 @@ class BaseRunner(metaclass=ABCMeta):
         return self.skip_cause.node.is_ephemeral_model
 
     def on_skip(self):
-        schema_name = self.node.schema
+        schema_name = getattr(self.node, "schema", "")
         node_name = self.node.name
 
         error_message = None
         if not self.node.is_ephemeral_model:
             # if this model was skipped due to an upstream ephemeral model
             # failure, print a special 'error skip' message.
+            # Include skip_cause NodeStatus
             if self._skip_caused_by_ephemeral_failure():
                 fire_event(
                     LogSkipBecauseError(
@@ -437,8 +427,10 @@ class BaseRunner(metaclass=ABCMeta):
                         relation=node_name,
                         index=self.node_index,
                         total=self.num_nodes,
+                        status=self.skip_cause.status,
                     )
                 )
+                # skip_cause here should be the run_result from the ephemeral model
                 print_run_result_error(result=self.skip_cause, newline=False)
                 if self.skip_cause is None:  # mypy appeasement
                     raise DbtInternalError(

@@ -2,10 +2,10 @@ from unittest import mock
 
 import pytest
 
+from dbt.adapters.factory import FACTORY, reset_adapters
 from dbt.cli.exceptions import DbtUsageException
 from dbt.cli.main import dbtRunner
 from dbt.exceptions import DbtProjectError
-from dbt.adapters.factory import reset_adapters, FACTORY
 from dbt.tests.util import read_file, write_file
 from dbt.version import __version__ as dbt_version
 from dbt_common.events.contextvars import get_node_info
@@ -34,6 +34,9 @@ class TestDbtRunner:
         res = dbt.invoke(["--warn-error", "--warn-error-options", '{"include": "all"}', "deps"])
         assert type(res.exception) == DbtUsageException
         res = dbt.invoke(["deps", "--warn-error", "--warn-error-options", '{"include": "all"}'])
+        assert type(res.exception) == DbtUsageException
+
+        res = dbt.invoke(["compile", "--select", "models", "--inline", "select 1 as id"])
         assert type(res.exception) == DbtUsageException
 
     def test_invalid_command(self, dbt: dbtRunner) -> None:
