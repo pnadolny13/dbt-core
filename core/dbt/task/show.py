@@ -11,7 +11,7 @@ from dbt.task.compile import CompileRunner, CompileTask
 from dbt.task.seed import SeedRunner
 from dbt_common.events.base_types import EventLevel
 from dbt_common.events.functions import fire_event
-from dbt_common.events.types import Note
+from dbt_common.events.types import Note, PrintEvent
 from dbt_common.exceptions import DbtRuntimeError
 
 
@@ -111,8 +111,8 @@ class ShowTask(CompileTask):
             if get_flags().LOG_FORMAT == "json":
                 fire_event(show_node_event)
             else:
-                # Cleaner to leave as print than to mutate the logger not to print timestamps.
-                print(show_node_event.message())
+                # No formatting, still get to stdout when --quiet is used
+                fire_event(PrintEvent(msg=show_node_event.message()))
 
     def _handle_result(self, result):
         super()._handle_result(result)

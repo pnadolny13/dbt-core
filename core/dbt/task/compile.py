@@ -11,7 +11,7 @@ from dbt.task.base import BaseRunner
 from dbt.task.runnable import GraphRunnableTask
 from dbt_common.events.base_types import EventLevel
 from dbt_common.events.functions import fire_event
-from dbt_common.events.types import Note
+from dbt_common.events.types import Note, PrintEvent
 from dbt_common.exceptions import CompilationError
 from dbt_common.exceptions import DbtBaseException as DbtException
 from dbt_common.exceptions import DbtInternalError
@@ -100,8 +100,8 @@ class CompileTask(GraphRunnableTask):
             if get_flags().LOG_FORMAT == "json":
                 fire_event(compiled_node_event)
             else:
-                # Cleaner to leave as print than to mutate the logger not to print timestamps.
-                print(compiled_node_event.message())
+                # No formatting, still get to stdout when --quiet is used
+                fire_event(PrintEvent(msg=compiled_node_event.message()))
 
     def _runtime_initialize(self):
         if getattr(self.args, "inline", None):
