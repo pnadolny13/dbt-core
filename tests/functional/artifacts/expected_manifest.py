@@ -269,7 +269,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "language": "sql",
                 "refs": [{"name": "seed", "package": None, "version": None}],
                 "sources": [],
-                "depends_on": {"nodes": ["seed.test.seed"], "macros": []},
+                "depends_on": {"nodes": ["seed.test.seed"], "macros": [], "vars": {}},
                 "deprecation_date": None,
                 "unique_id": "model.test.model",
                 "fqn": ["test", "model"],
@@ -368,7 +368,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "language": "sql",
                 "refs": [{"name": "seed", "package": None, "version": None}],
                 "sources": [],
-                "depends_on": {"nodes": ["seed.test.seed"], "macros": []},
+                "depends_on": {"nodes": ["seed.test.seed"], "macros": [], "vars": {}},
                 "deprecation_date": None,
                 "unique_id": "model.test.second_model",
                 "fqn": ["test", "second_model"],
@@ -546,6 +546,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "depends_on": {
                     "macros": ["macro.dbt.test_not_null", "macro.dbt.get_where_subquery"],
                     "nodes": ["model.test.model"],
+                    "vars": {},
                 },
                 "description": "",
                 "file_key_name": "models.model",
@@ -599,6 +600,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "depends_on": {
                     "macros": [],
                     "nodes": ["seed.test.seed"],
+                    "vars": {"alternate_schema": alternate_schema},
                 },
                 "description": "",
                 "docs": {"node_color": None, "show": True},
@@ -646,6 +648,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "depends_on": {
                     "macros": ["macro.test.test_nothing", "macro.dbt.get_where_subquery"],
                     "nodes": ["model.test.model"],
+                    "vars": {},
                 },
                 "description": "",
                 "file_key_name": "models.model",
@@ -698,6 +701,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "depends_on": {
                     "macros": ["macro.dbt.test_unique", "macro.dbt.get_where_subquery"],
                     "nodes": ["model.test.model"],
+                    "vars": {},
                 },
                 "description": "",
                 "file_key_name": "models.model",
@@ -796,6 +800,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "depends_on": {
                     "macros": [],
                     "nodes": ["model.test.model", "model.test.second_model"],
+                    "vars": {},
                 },
                 "description": "A description of the complex exposure\n",
                 "label": None,
@@ -828,6 +833,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "depends_on": {
                     "macros": [],
                     "nodes": ["source.test.my_source.my_table", "model.test.model"],
+                    "vars": {},
                 },
                 "description": "",
                 "label": None,
@@ -941,6 +947,7 @@ def expected_references_manifest(project):
                 "depends_on": {
                     "macros": [],
                     "nodes": ["source.test.my_source.my_table"],
+                    "vars": {},
                 },
                 "deprecation_date": None,
                 "description": "",
@@ -1010,6 +1017,7 @@ def expected_references_manifest(project):
                 "depends_on": {
                     "macros": [],
                     "nodes": ["model.test.ephemeral_copy"],
+                    "vars": {},
                 },
                 "deprecation_date": None,
                 "description": "A summmary table of the ephemeral copy of the seed data",
@@ -1082,6 +1090,7 @@ def expected_references_manifest(project):
                 "depends_on": {
                     "macros": [],
                     "nodes": ["model.test.ephemeral_summary"],
+                    "vars": {},
                 },
                 "deprecation_date": None,
                 "description": "A view of the summary of the ephemeral copy of the seed data",
@@ -1208,7 +1217,11 @@ def expected_references_manifest(project):
                 "config": get_rendered_snapshot_config(target_schema=alternate_schema),
                 "contract": {"checksum": None, "enforced": False, "alias_types": True},
                 "database": model_database,
-                "depends_on": {"macros": [], "nodes": ["seed.test.seed"]},
+                "depends_on": {
+                    "macros": [],
+                    "nodes": ["seed.test.seed"],
+                    "vars": {"alternate_schema": alternate_schema},
+                },
                 "description": "",
                 "docs": {"node_color": None, "show": True},
                 "extra_ctes": [],
@@ -1297,6 +1310,7 @@ def expected_references_manifest(project):
                 "depends_on": {
                     "macros": [],
                     "nodes": ["model.test.view_summary"],
+                    "vars": {},
                 },
                 "description": "A description of the complex exposure",
                 "label": None,
@@ -1538,7 +1552,7 @@ def expected_versions_manifest(project):
                 ),
                 "constraints": [],
                 "sources": [],
-                "depends_on": {"macros": [], "nodes": []},
+                "depends_on": {"macros": [], "nodes": [], "vars": {}},
                 "description": "A versioned model",
                 "primary_key": ["count", "first_name"],
                 "deprecation_date": ANY,
@@ -1612,7 +1626,7 @@ def expected_versions_manifest(project):
                 "constraints": [],
                 "contract": {"checksum": None, "enforced": False, "alias_types": True},
                 "sources": [],
-                "depends_on": {"macros": [], "nodes": []},
+                "depends_on": {"macros": [], "nodes": [], "vars": {}},
                 "description": "A versioned model",
                 "primary_key": ["first_name"],
                 "deprecation_date": None,
@@ -1666,6 +1680,7 @@ def expected_versions_manifest(project):
                         "model.test.versioned_model.v2",
                         "model.test.versioned_model.v1",
                     ],
+                    "vars": {},
                 },
                 "deprecation_date": None,
                 "description": "",
@@ -1725,6 +1740,7 @@ def expected_versions_manifest(project):
                 "depends_on": {
                     "macros": ["macro.dbt.test_unique", "macro.dbt.get_where_subquery"],
                     "nodes": ["model.test.versioned_model.v1"],
+                    "vars": {},
                 },
                 "description": "",
                 "file_key_name": "models.versioned_model",
@@ -1778,6 +1794,7 @@ def expected_versions_manifest(project):
                 "depends_on": {
                     "macros": ["macro.dbt.test_unique", "macro.dbt.get_where_subquery"],
                     "nodes": ["model.test.versioned_model.v1"],
+                    "vars": {},
                 },
                 "description": "",
                 "file_key_name": "models.versioned_model",
@@ -1831,6 +1848,7 @@ def expected_versions_manifest(project):
                 "depends_on": {
                     "macros": ["macro.dbt.test_unique", "macro.dbt.get_where_subquery"],
                     "nodes": ["model.test.versioned_model.v2"],
+                    "vars": {},
                 },
                 "description": "",
                 "file_key_name": "models.versioned_model",
@@ -1874,6 +1892,7 @@ def expected_versions_manifest(project):
                 "depends_on": {
                     "macros": [],
                     "nodes": ["model.test.versioned_model.v2"],
+                    "vars": {},
                 },
                 "description": "notebook_info",
                 "label": None,
