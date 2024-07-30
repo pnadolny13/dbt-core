@@ -10,8 +10,6 @@ from itertools import chain
 from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple, Type, Union
 
 import msgpack
-from dbt_semantic_interfaces.enum_extension import assert_values_exhausted
-from dbt_semantic_interfaces.type_enums import MetricType
 
 import dbt.deprecations
 import dbt.exceptions
@@ -119,6 +117,8 @@ from dbt_common.events.functions import fire_event, get_invocation_id, warn_or_e
 from dbt_common.events.types import Note
 from dbt_common.exceptions.base import DbtValidationError
 from dbt_common.helper_types import PathSet
+from dbt_semantic_interfaces.enum_extension import assert_values_exhausted
+from dbt_semantic_interfaces.type_enums import MetricType
 
 PERF_INFO_FILE_NAME = "perf_info.json"
 
@@ -222,12 +222,12 @@ class ManifestLoader:
     def __init__(
         self,
         root_project: RuntimeConfig,
-        all_projects: Mapping[str, Project],
+        all_projects: Mapping[str, RuntimeConfig],
         macro_hook: Optional[Callable[[Manifest], Any]] = None,
         file_diff: Optional[FileDiff] = None,
     ) -> None:
         self.root_project: RuntimeConfig = root_project
-        self.all_projects: Mapping[str, Project] = all_projects
+        self.all_projects: Mapping[str, RuntimeConfig] = all_projects
         self.file_diff = file_diff
         self.manifest: Manifest = Manifest()
         self.new_manifest = self.manifest
@@ -467,6 +467,7 @@ class ManifestLoader:
             self.process_model_inferred_primary_keys()
             self.check_valid_group_config()
             self.check_valid_access_property()
+            self.check_valid_snapshot_config()
 
             semantic_manifest = SemanticManifest(self.manifest)
             if not semantic_manifest.validate():
@@ -668,7 +669,7 @@ class ManifestLoader:
     # 'parser_types'
     def parse_project(
         self,
-        project: Project,
+        project: RuntimeConfig,
         parser_files,
         parser_types: List[Type[Parser]],
     ) -> None:
@@ -1344,6 +1345,16 @@ class ManifestLoader:
                     field_value=node.access,
                     materialization=node.get_materialization(),
                 )
+
+    def check_valid_snapshot_config(self):
+        # Snapshot config can be set in either SQL files or yaml files,
+        # so we need to validate afterward.
+        for node in self.manifest.nodes.values():
+            if node.resource_type != NodeType.Snapshot:
+                continue
+            if node.created_at < self.started_at:
+                continue
+            node.config.final_validate()
 
     def write_perf_info(self, target_path: str):
         path = os.path.join(target_path, PERF_INFO_FILE_NAME)

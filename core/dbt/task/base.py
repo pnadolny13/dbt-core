@@ -274,9 +274,11 @@ class BaseRunner(metaclass=ABCMeta):
 
     def compile_and_execute(self, manifest, ctx):
         result = None
-        with self.adapter.connection_named(
-            self.node.unique_id, self.node
-        ) if get_flags().INTROSPECT else nullcontext():
+        with (
+            self.adapter.connection_named(self.node.unique_id, self.node)
+            if get_flags().INTROSPECT
+            else nullcontext()
+        ):
             ctx.node.update_event_status(node_status=RunningStatus.Compiling)
             fire_event(
                 NodeCompiling(
@@ -410,13 +412,14 @@ class BaseRunner(metaclass=ABCMeta):
         return self.skip_cause.node.is_ephemeral_model
 
     def on_skip(self):
-        schema_name = self.node.schema
+        schema_name = getattr(self.node, "schema", "")
         node_name = self.node.name
 
         error_message = None
         if not self.node.is_ephemeral_model:
             # if this model was skipped due to an upstream ephemeral model
             # failure, print a special 'error skip' message.
+            # Include skip_cause NodeStatus
             if self._skip_caused_by_ephemeral_failure():
                 fire_event(
                     LogSkipBecauseError(
@@ -424,8 +427,10 @@ class BaseRunner(metaclass=ABCMeta):
                         relation=node_name,
                         index=self.node_index,
                         total=self.num_nodes,
+                        status=self.skip_cause.status,
                     )
                 )
+                # skip_cause here should be the run_result from the ephemeral model
                 print_run_result_error(result=self.skip_cause, newline=False)
                 if self.skip_cause is None:  # mypy appeasement
                     raise DbtInternalError(

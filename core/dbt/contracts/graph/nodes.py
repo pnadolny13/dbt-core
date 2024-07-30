@@ -58,8 +58,9 @@ from dbt.artifacts.resources import SingularTest as SingularTestResource
 from dbt.artifacts.resources import Snapshot as SnapshotResource
 from dbt.artifacts.resources import SourceDefinition as SourceDefinitionResource
 from dbt.artifacts.resources import SqlOperation as SqlOperationResource
+from dbt.artifacts.resources import TimeSpine
 from dbt.artifacts.resources import UnitTestDefinition as UnitTestDefinitionResource
-from dbt.contracts.graph.model_config import EmptySnapshotConfig, UnitTestNodeConfig
+from dbt.contracts.graph.model_config import UnitTestNodeConfig
 from dbt.contracts.graph.node_args import ModelNodeArgs
 from dbt.contracts.graph.unparsed import (
     HasYamlMetadata,
@@ -85,7 +86,11 @@ from dbt.node_types import (
     NodeType,
 )
 from dbt_common.clients.system import write_file
-from dbt_common.contracts.constraints import ConstraintType
+from dbt_common.contracts.constraints import (
+    ColumnLevelConstraint,
+    ConstraintType,
+    ModelLevelConstraint,
+)
 from dbt_common.events.contextvars import set_log_contextvars
 from dbt_common.events.functions import warn_or_error
 
@@ -489,6 +494,18 @@ class ModelNode(ModelResource, CompiledNode):
     def materialization_enforces_constraints(self) -> bool:
         return self.config.materialized in ["table", "incremental"]
 
+    @property
+    def all_constraints(self) -> List[Union[ModelLevelConstraint, ColumnLevelConstraint]]:
+        constraints: List[Union[ModelLevelConstraint, ColumnLevelConstraint]] = []
+        for model_level_constraint in self.constraints:
+            constraints.append(model_level_constraint)
+
+        for column in self.columns.values():
+            for column_level_constraint in column.constraints:
+                constraints.append(column_level_constraint)
+
+        return constraints
+
     def infer_primary_key(self, data_tests: List["GenericTestNode"]) -> List[str]:
         """
         Infers the columns that can be used as primary key of a model in the following order:
@@ -636,9 +653,9 @@ class ModelNode(ModelResource, CompiledNode):
         contract_enforced_disabled: bool = False
         columns_removed: List[str] = []
         column_type_changes: List[Dict[str, str]] = []
-        enforced_column_constraint_removed: List[
-            Dict[str, str]
-        ] = []  # column_name, constraint_type
+        enforced_column_constraint_removed: List[Dict[str, str]] = (
+            []
+        )  # column_name, constraint_type
         enforced_model_constraint_removed: List[Dict[str, Any]] = []  # constraint_type, columns
         materialization_changed: List[str] = []
 
@@ -1042,19 +1059,6 @@ class UnitTestFileFixture(BaseNode):
 
 
 @dataclass
-class IntermediateSnapshotNode(CompiledNode):
-    # at an intermediate stage in parsing, where we've built something better
-    # than an unparsed node for rendering in parse mode, it's pretty possible
-    # that we won't have critical snapshot-related information that is only
-    # defined in config blocks. To fix that, we have an intermediate type that
-    # uses a regular node config, which the snapshot parser will then convert
-    # into a full ParsedSnapshotNode after rendering. Note: it currently does
-    # not work to set snapshot config in schema files because of the validation.
-    resource_type: Literal[NodeType.Snapshot]
-    config: EmptySnapshotConfig = field(default_factory=EmptySnapshotConfig)
-
-
-@dataclass
 class SnapshotNode(SnapshotResource, CompiledNode):
     @classmethod
     def resource_class(cls) -> Type[SnapshotResource]:
@@ -1133,7 +1137,7 @@ class UnpatchedSourceDefinition(BaseNode):
     def get_source_representation(self):
         return f'source("{self.source.name}", "{self.table.name}")'
 
-    def validate_data_tests(self):
+    def validate_data_tests(self, is_root_project: bool):
         """
         sources parse tests differently than models, so we need to do some validation
         here where it's done in the PatchParser for other nodes
@@ -1144,11 +1148,12 @@ class UnpatchedSourceDefinition(BaseNode):
                 "Invalid test config: cannot have both 'tests' and 'data_tests' defined"
             )
         if self.tests:
-            deprecations.warn(
-                "project-test-config",
-                deprecated_path="tests",
-                exp_path="data_tests",
-            )
+            if is_root_project:
+                deprecations.warn(
+                    "project-test-config",
+                    deprecated_path="tests",
+                    exp_path="data_tests",
+                )
             self.data_tests.extend(self.tests)
             self.tests.clear()
 
@@ -1159,11 +1164,12 @@ class UnpatchedSourceDefinition(BaseNode):
                     "Invalid test config: cannot have both 'tests' and 'data_tests' defined"
                 )
             if column.tests:
-                deprecations.warn(
-                    "project-test-config",
-                    deprecated_path="tests",
-                    exp_path="data_tests",
-                )
+                if is_root_project:
+                    deprecations.warn(
+                        "project-test-config",
+                        deprecated_path="tests",
+                        exp_path="data_tests",
+                    )
                 column.data_tests.extend(column.tests)
                 column.tests.clear()
 
@@ -1181,7 +1187,6 @@ class UnpatchedSourceDefinition(BaseNode):
         return [] if self.table.columns is None else self.table.columns
 
     def get_tests(self) -> Iterator[Tuple[Dict[str, Any], Optional[UnparsedColumn]]]:
-        self.validate_data_tests()
         for data_test in self.data_tests:
             yield normalize_test(data_test), None
 
@@ -1562,12 +1567,11 @@ class SavedQuery(NodeInfoMixin, GraphNode, SavedQueryResource):
         return self.group == old.group
 
     def same_exports(self, old: "SavedQuery") -> bool:
-        # TODO: This isn't currently used in `same_contents` (nor called anywhere else)
         if len(self.exports) != len(old.exports):
             return False
 
         # exports should be in the same order, so we zip them for easy iteration
-        for (old_export, new_export) in zip(old.exports, self.exports):
+        for old_export, new_export in zip(old.exports, self.exports):
             if not (
                 old_export.name == new_export.name
                 and old_export.config.export_as == new_export.config.export_as
@@ -1592,6 +1596,7 @@ class SavedQuery(NodeInfoMixin, GraphNode, SavedQueryResource):
             and self.same_label(old)
             and self.same_config(old)
             and self.same_group(old)
+            and self.same_exports(old)
             and True
         )
 
@@ -1621,6 +1626,7 @@ class ParsedNodePatch(ParsedPatch):
     latest_version: Optional[NodeVersion]
     constraints: List[Dict[str, Any]]
     deprecation_date: Optional[datetime]
+    time_spine: Optional[TimeSpine] = None
 
 
 @dataclass

@@ -1,18 +1,22 @@
+import os
+import shutil
 from typing import List
 
 import pytest
+
+from dbt.contracts.graph.manifest import Manifest
+from dbt.tests.util import run_dbt, write_file
+from dbt_common.events.base_types import BaseEvent
 from dbt_semantic_interfaces.type_enums.export_destination_type import (
     ExportDestinationType,
 )
-
-from dbt.contracts.graph.manifest import Manifest
-from dbt.tests.util import write_file
-from dbt_common.events.base_types import BaseEvent
 from tests.functional.assertions.test_runner import dbtTestRunner
 from tests.functional.saved_queries.fixtures import (
+    saved_queries_with_defaults_yml,
     saved_queries_with_diff_filters_yml,
     saved_queries_yml,
     saved_query_description,
+    saved_query_with_cache_configs_defined_yml,
 )
 from tests.functional.semantic_models.fixtures import (
     fct_revenue_sql,
@@ -31,6 +35,11 @@ class TestSavedQueryParsing:
             "metricflow_time_spine.sql": metricflow_time_spine_sql,
             "docs.md": saved_query_description,
         }
+
+    def copy_state(self):
+        if not os.path.exists("state"):
+            os.makedirs("state")
+        shutil.copyfile("target/manifest.json", "state/manifest.json")
 
     def test_semantic_model_parsing(self, project):
         runner = dbtTestRunner()
@@ -51,6 +60,31 @@ class TestSavedQueryParsing:
         assert saved_query.exports[0].config.alias == "my_export_alias"
         assert saved_query.exports[0].config.export_as == ExportDestinationType.TABLE
         assert saved_query.exports[0].config.schema_name == "my_export_schema_name"
+
+        # Save state
+        self.copy_state()
+        # Nothing has changed, so no state:modified results
+        results = run_dbt(["ls", "--select", "state:modified", "--state", "./state"])
+        assert len(results) == 0
+
+        # Change saved_query
+        write_file(
+            saved_query_with_cache_configs_defined_yml,
+            project.project_root,
+            "models",
+            "saved_queries.yml",
+        )
+        # State modified finds changed saved_query
+        results = run_dbt(["ls", "--select", "state:modified", "--state", "./state"])
+        assert len(results) == 1
+
+        # change exports
+        write_file(
+            saved_queries_with_defaults_yml, project.project_root, "models", "saved_queries.yml"
+        )
+        # State modified finds changed saved_query
+        results = run_dbt(["ls", "--select", "state:modified", "--state", "./state"])
+        assert len(results) == 1
 
     def test_saved_query_error(self, project):
         error_schema_yml = saved_queries_yml.replace("simple_metric", "metric_not_found")

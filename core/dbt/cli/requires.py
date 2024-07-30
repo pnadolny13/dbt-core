@@ -45,6 +45,7 @@ from dbt_common.record import (
     Recorder,
     RecorderMode,
     get_record_mode_from_env,
+    get_record_types_from_dict,
     get_record_types_from_env,
 )
 from dbt_common.utils import cast_dict_to_dict_of_strings
@@ -110,8 +111,17 @@ def setup_record_replay():
 
     recorder: Optional[Recorder] = None
     if rec_mode == RecorderMode.REPLAY:
-        recording_path = os.environ.get("DBT_RECORDER_FILE_PATH")
-        recorder = Recorder(RecorderMode.REPLAY, types=rec_types, recording_path=recording_path)
+        previous_recording_path = os.environ.get("DBT_RECORDER_FILE_PATH")
+        recorder = Recorder(
+            RecorderMode.REPLAY, types=rec_types, previous_recording_path=previous_recording_path
+        )
+    elif rec_mode == RecorderMode.DIFF:
+        previous_recording_path = os.environ.get("DBT_RECORDER_FILE_PATH")
+        # ensure types match the previous recording
+        types = get_record_types_from_dict(previous_recording_path)
+        recorder = Recorder(
+            RecorderMode.DIFF, types=types, previous_recording_path=previous_recording_path
+        )
     elif rec_mode == RecorderMode.RECORD:
         recorder = Recorder(RecorderMode.RECORD, types=rec_types)
 
@@ -122,7 +132,10 @@ def tear_down_record_replay():
     recorder = get_invocation_context().recorder
     if recorder is not None:
         if recorder.mode == RecorderMode.RECORD:
-            recorder.write("recording.json")
+            recorder.write()
+        if recorder.mode == RecorderMode.DIFF:
+            recorder.write()
+            recorder.write_diffs(diff_file_name="recording_diffs.json")
         elif recorder.mode == RecorderMode.REPLAY:
             recorder.write_diffs("replay_diffs.json")
 
@@ -166,9 +179,11 @@ def postflight(func):
                         process_in_blocks=rusage.ru_inblock,
                         process_out_blocks=rusage.ru_oublock,
                     ),
-                    EventLevel.INFO
-                    if "flags" in ctx.obj and ctx.obj["flags"].SHOW_RESOURCE_REPORT
-                    else None,
+                    (
+                        EventLevel.INFO
+                        if "flags" in ctx.obj and ctx.obj["flags"].SHOW_RESOURCE_REPORT
+                        else None
+                    ),
                 )
 
             fire_event(

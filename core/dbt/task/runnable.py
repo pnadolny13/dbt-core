@@ -5,7 +5,7 @@ from concurrent.futures import as_completed
 from datetime import datetime
 from multiprocessing.dummy import Pool as ThreadPool
 from pathlib import Path
-from typing import AbstractSet, Dict, Iterable, List, Optional, Set, Tuple
+from typing import AbstractSet, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import dbt.exceptions
 import dbt.tracking
@@ -31,6 +31,7 @@ from dbt.events.types import (
     EndRunResult,
     GenericExceptionOnRun,
     LogCancelLine,
+    MarkSkippedChildren,
     NodeFinished,
     NodeStart,
     NothingToDo,
@@ -108,7 +109,11 @@ class GraphRunnableTask(ConfiguredTask):
 
     def get_selection_spec(self) -> SelectionSpec:
         default_selector_name = self.config.get_default_selector_name()
-        if self.args.selector:
+        spec: Union[SelectionSpec, bool]
+        if hasattr(self.args, "inline") and self.args.inline:
+            # We want an empty selection spec.
+            spec = parse_difference(None, None)
+        elif self.args.selector:
             # use pre-defined selector (--selector)
             spec = self.config.get_selector(self.args.selector)
         elif not (self.selection_arg or self.exclusion_arg) and default_selector_name:
@@ -432,6 +437,13 @@ class GraphRunnableTask(ConfiguredTask):
     ) -> None:
         if self.graph is None:
             raise DbtInternalError("graph is None in _mark_dependent_errors")
+        fire_event(
+            MarkSkippedChildren(
+                unique_id=node_id,
+                status=result.status,
+                run_result=result.to_msg_dict(),
+            )
+        )
         for dep_node_id in self.graph.get_dependent_nodes(UniqueId(node_id)):
             self._skipped_children[dep_node_id] = cause
 

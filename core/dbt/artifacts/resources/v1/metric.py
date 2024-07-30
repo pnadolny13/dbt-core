@@ -2,13 +2,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional
 
-from dbt_semantic_interfaces.references import MeasureReference, MetricReference
-from dbt_semantic_interfaces.type_enums import (
-    ConversionCalculationType,
-    MetricType,
-    TimeGranularity,
-)
-
 from dbt.artifacts.resources.base import GraphResource
 from dbt.artifacts.resources.types import NodeType
 from dbt.artifacts.resources.v1.components import DependsOn, RefArgs
@@ -18,6 +11,13 @@ from dbt.artifacts.resources.v1.semantic_layer_components import (
 )
 from dbt_common.contracts.config.base import BaseConfig, CompareBehavior, MergeBehavior
 from dbt_common.dataclass_schema import dbtClassMixin
+from dbt_semantic_interfaces.references import MeasureReference, MetricReference
+from dbt_semantic_interfaces.type_enums import (
+    ConversionCalculationType,
+    MetricType,
+    PeriodAggregation,
+    TimeGranularity,
+)
 
 """
 The following classes are dataclasses which are used to construct the Metric
@@ -81,6 +81,13 @@ class ConversionTypeParams(dbtClassMixin):
 
 
 @dataclass
+class CumulativeTypeParams(dbtClassMixin):
+    window: Optional[MetricTimeWindow] = None
+    grain_to_date: Optional[TimeGranularity] = None
+    period_agg: PeriodAggregation = PeriodAggregation.FIRST
+
+
+@dataclass
 class MetricTypeParams(dbtClassMixin):
     measure: Optional[MetricInputMeasure] = None
     input_measures: List[MetricInputMeasure] = field(default_factory=list)
@@ -91,6 +98,7 @@ class MetricTypeParams(dbtClassMixin):
     grain_to_date: Optional[TimeGranularity] = None
     metrics: Optional[List[MetricInput]] = None
     conversion_type_params: Optional[ConversionTypeParams] = None
+    cumulative_type_params: Optional[CumulativeTypeParams] = None
 
 
 @dataclass
@@ -113,6 +121,7 @@ class Metric(GraphResource):
     type_params: MetricTypeParams
     filter: Optional[WhereFilterIntersection] = None
     metadata: Optional[SourceFileMetadata] = None
+    time_granularity: Optional[TimeGranularity] = None
     resource_type: Literal[NodeType.Metric]
     meta: Dict[str, Any] = field(default_factory=dict, metadata=MergeBehavior.Update.meta())
     tags: List[str] = field(default_factory=list)

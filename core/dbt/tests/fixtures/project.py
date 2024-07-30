@@ -282,8 +282,8 @@ def adapter(
     project_root,
     profiles_root,
     profiles_yml,
-    dbt_project_yml,
     clean_up_logging,
+    dbt_project_yml,
 ):
     # The profiles.yml and dbt_project.yml should already be written out
     args = Namespace(
@@ -341,6 +341,7 @@ def write_project_files_recursively(path, file_dict):
 # Provide a dictionary of file names to contents. Nested directories
 # are handle by nested dictionaries.
 
+
 # models directory
 @pytest.fixture(scope="class")
 def models():
@@ -385,7 +386,20 @@ def analyses():
 
 # Write out the files provided by models, macros, properties, snapshots, seeds, tests, analyses
 @pytest.fixture(scope="class")
-def project_files(project_root, models, macros, snapshots, properties, seeds, tests, analyses):
+def project_files(
+    project_root,
+    models,
+    macros,
+    snapshots,
+    properties,
+    seeds,
+    tests,
+    analyses,
+    selectors_yml,
+    dependencies_yml,
+    packages_yml,
+    dbt_project_yml,
+):
     write_project_files(project_root, "models", {**models, **properties})
     write_project_files(project_root, "macros", macros)
     write_project_files(project_root, "snapshots", snapshots)
@@ -515,12 +529,8 @@ def initialization(environment) -> None:
     enable_test_caching()
 
 
-# This is the main fixture that is used in all functional tests. It pulls in the other
-# fixtures that are necessary to set up a dbt project, and saves some of the information
-# in a TestProjInfo class, which it returns, so that individual test cases do not have
-# to pull in the other fixtures individually to access their information.
 @pytest.fixture(scope="class")
-def project(
+def project_setup(
     initialization,
     clean_up_logging,
     project_root,
@@ -528,12 +538,7 @@ def project(
     request,
     unique_schema,
     profiles_yml,
-    dbt_project_yml,
-    packages_yml,
-    dependencies_yml,
-    selectors_yml,
     adapter,
-    project_files,
     shared_data_dir,
     test_data_dir,
     logs_dir,
@@ -587,3 +592,16 @@ def project(
         pass
     os.chdir(orig_cwd)
     cleanup_event_logger()
+
+
+# This is the main fixture that is used in all functional tests. It pulls in the other
+# fixtures that are necessary to set up a dbt project, and saves some of the information
+# in a TestProjInfo class, which it returns, so that individual test cases do not have
+# to pull in the other fixtures individually to access their information.
+# The order of arguments here determine which steps runs first.
+@pytest.fixture(scope="class")
+def project(
+    project_setup: TestProjInfo,
+    project_files,
+):
+    return project_setup

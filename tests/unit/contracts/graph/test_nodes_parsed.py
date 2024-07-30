@@ -3,7 +3,6 @@ from argparse import Namespace
 from dataclasses import replace
 
 import pytest
-from dbt_semantic_interfaces.type_enums import MetricType
 from hypothesis import given
 from hypothesis.strategies import builds, lists
 
@@ -30,7 +29,6 @@ from dbt.artifacts.resources import TestMetadata, Time
 from dbt.artifacts.resources.types import TimePeriod
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.model_config import (
-    EmptySnapshotConfig,
     ModelConfig,
     NodeConfig,
     SeedConfig,
@@ -44,7 +42,6 @@ from dbt.contracts.graph.nodes import (
     Exposure,
     GenericTestNode,
     HookNode,
-    IntermediateSnapshotNode,
     Macro,
     Metric,
     ModelNode,
@@ -55,6 +52,7 @@ from dbt.contracts.graph.nodes import (
 )
 from dbt.node_types import AccessType, NodeType
 from dbt_common.dataclass_schema import ValidationError
+from dbt_semantic_interfaces.type_enums import MetricType
 from tests.unit.utils import (
     ContractTestCase,
     assert_fails_validation,
@@ -1333,7 +1331,7 @@ def test_invalid_missing_updated_at(basic_timestamp_snapshot_config_dict):
     bad_fields = basic_timestamp_snapshot_config_dict
     del bad_fields["updated_at"]
     bad_fields["check_cols"] = "all"
-    assert_fails_validation(bad_fields, SnapshotConfig)
+    assert_snapshot_config_fails_validation(bad_fields)
 
 
 @pytest.fixture
@@ -1437,7 +1435,7 @@ def test_complex_snapshot_config(
 def test_invalid_check_wrong_strategy(basic_check_snapshot_config_dict):
     wrong_strategy = basic_check_snapshot_config_dict
     wrong_strategy["strategy"] = "timestamp"
-    assert_fails_validation(wrong_strategy, SnapshotConfig)
+    assert_snapshot_config_fails_validation(wrong_strategy)
 
 
 def test_invalid_missing_check_cols(basic_check_snapshot_config_dict):
@@ -1445,6 +1443,8 @@ def test_invalid_missing_check_cols(basic_check_snapshot_config_dict):
     del wrong_fields["check_cols"]
     with pytest.raises(ValidationError, match=r"A snapshot configured with the check strategy"):
         SnapshotConfig.validate(wrong_fields)
+        cfg = SnapshotConfig.from_dict(wrong_fields)
+        cfg.final_validate()
 
 
 def test_missing_snapshot_configs(basic_check_snapshot_config_dict):
@@ -1452,22 +1452,28 @@ def test_missing_snapshot_configs(basic_check_snapshot_config_dict):
     del wrong_fields["strategy"]
     with pytest.raises(ValidationError, match=r"Snapshots must be configured with a 'strategy'"):
         SnapshotConfig.validate(wrong_fields)
+        cfg = SnapshotConfig.from_dict(wrong_fields)
+        cfg.final_validate()
 
     wrong_fields["strategy"] = "timestamp"
     del wrong_fields["unique_key"]
     with pytest.raises(ValidationError, match=r"Snapshots must be configured with a 'strategy'"):
         SnapshotConfig.validate(wrong_fields)
+        cfg = SnapshotConfig.from_dict(wrong_fields)
+        cfg.final_validate()
 
-    wrong_fields["unique_key"] = "id"
-    del wrong_fields["target_schema"]
-    with pytest.raises(ValidationError, match=r"Snapshots must be configured with a 'strategy'"):
-        SnapshotConfig.validate(wrong_fields)
+
+def assert_snapshot_config_fails_validation(dct):
+    with pytest.raises(ValidationError):
+        SnapshotConfig.validate(dct)
+        obj = SnapshotConfig.from_dict(dct)
+        obj.final_validate()
 
 
 def test_invalid_check_value(basic_check_snapshot_config_dict):
     invalid_check_type = basic_check_snapshot_config_dict
     invalid_check_type["check_cols"] = "some"
-    assert_fails_validation(invalid_check_type, SnapshotConfig)
+    assert_snapshot_config_fails_validation(invalid_check_type)
 
 
 @pytest.fixture
@@ -1562,51 +1568,6 @@ def basic_timestamp_snapshot_object():
             target_schema="some_snapshot_schema",
         ),
         checksum=FileHash.from_contents(""),
-        unrendered_config={
-            "strategy": "timestamp",
-            "unique_key": "id",
-            "updated_at": "last_update",
-            "target_database": "some_snapshot_db",
-            "target_schema": "some_snapshot_schema",
-        },
-    )
-
-
-@pytest.fixture
-def basic_intermediate_timestamp_snapshot_object():
-    cfg = EmptySnapshotConfig()
-    cfg._extra.update(
-        {
-            "strategy": "timestamp",
-            "unique_key": "id",
-            "updated_at": "last_update",
-            "target_database": "some_snapshot_db",
-            "target_schema": "some_snapshot_schema",
-        }
-    )
-
-    return IntermediateSnapshotNode(
-        package_name="test",
-        path="/root/x/path.sql",
-        original_file_path="/root/path.sql",
-        language="sql",
-        raw_code="select * from wherever",
-        name="foo",
-        resource_type=NodeType.Snapshot,
-        unique_id="model.test.foo",
-        fqn=["test", "models", "foo"],
-        refs=[],
-        sources=[],
-        metrics=[],
-        depends_on=DependsOn(),
-        description="",
-        database="test_db",
-        schema="test_schema",
-        alias="bar",
-        tags=[],
-        config=cfg,
-        checksum=FileHash.from_contents(""),
-        created_at=1,
         unrendered_config={
             "strategy": "timestamp",
             "unique_key": "id",
@@ -1719,64 +1680,14 @@ def basic_check_snapshot_object():
     )
 
 
-@pytest.fixture
-def basic_intermediate_check_snapshot_object():
-    cfg = EmptySnapshotConfig()
-    cfg._extra.update(
-        {
-            "unique_key": "id",
-            "strategy": "check",
-            "check_cols": "all",
-            "target_database": "some_snapshot_db",
-            "target_schema": "some_snapshot_schema",
-        }
-    )
-
-    return IntermediateSnapshotNode(
-        package_name="test",
-        path="/root/x/path.sql",
-        original_file_path="/root/path.sql",
-        language="sql",
-        raw_code="select * from wherever",
-        name="foo",
-        resource_type=NodeType.Snapshot,
-        unique_id="model.test.foo",
-        fqn=["test", "models", "foo"],
-        refs=[],
-        sources=[],
-        metrics=[],
-        depends_on=DependsOn(),
-        description="",
-        database="test_db",
-        schema="test_schema",
-        alias="bar",
-        tags=[],
-        config=cfg,
-        checksum=FileHash.from_contents(""),
-        created_at=1.0,
-        unrendered_config={
-            "target_database": "some_snapshot_db",
-            "target_schema": "some_snapshot_schema",
-            "unique_key": "id",
-            "strategy": "check",
-            "check_cols": "all",
-        },
-    )
-
-
 def test_timestamp_snapshot_ok(
     basic_timestamp_snapshot_dict,
     basic_timestamp_snapshot_object,
-    basic_intermediate_timestamp_snapshot_object,
 ):
     node_dict = basic_timestamp_snapshot_dict
     node = basic_timestamp_snapshot_object
-    inter = basic_intermediate_timestamp_snapshot_object
 
     assert_symmetric(node, node_dict, SnapshotNode)
-    #   node_from_dict = SnapshotNode.from_dict(inter.to_dict(omit_none=True))
-    #   node_from_dict.created_at = 1
-    assert SnapshotNode.from_dict(inter.to_dict(omit_none=True)) == node
     assert node.is_refable is True
     assert node.is_ephemeral is False
     pickle.loads(pickle.dumps(node))
@@ -1785,14 +1696,11 @@ def test_timestamp_snapshot_ok(
 def test_check_snapshot_ok(
     basic_check_snapshot_dict,
     basic_check_snapshot_object,
-    basic_intermediate_check_snapshot_object,
 ):
     node_dict = basic_check_snapshot_dict
     node = basic_check_snapshot_object
-    inter = basic_intermediate_check_snapshot_object
 
     assert_symmetric(node, node_dict, SnapshotNode)
-    assert SnapshotNode.from_dict(inter.to_dict(omit_none=True)) == node
     assert node.is_refable is True
     assert node.is_ephemeral is False
     pickle.loads(pickle.dumps(node))

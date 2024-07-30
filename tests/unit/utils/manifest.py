@@ -1,5 +1,6 @@
+from typing import Any, Dict, List
+
 import pytest
-from dbt_semantic_interfaces.type_enums import MetricType
 
 from dbt.artifacts.resources import (
     ExposureType,
@@ -12,17 +13,23 @@ from dbt.artifacts.resources import (
     RefArgs,
     TestConfig,
     TestMetadata,
+    WhereFilter,
+    WhereFilterIntersection,
 )
+from dbt.artifacts.resources.types import ModelLanguage
 from dbt.artifacts.resources.v1.model import ModelConfig
-from dbt.contracts.files import FileHash
+from dbt.contracts.files import AnySourceFile, FileHash
 from dbt.contracts.graph.manifest import Manifest, ManifestMetadata
 from dbt.contracts.graph.nodes import (
     AccessType,
     DependsOn,
+    Documentation,
     Exposure,
     GenericTestNode,
+    GraphMemberNode,
     Group,
     Macro,
+    ManifestNode,
     Metric,
     ModelNode,
     NodeConfig,
@@ -35,6 +42,7 @@ from dbt.contracts.graph.nodes import (
 )
 from dbt.contracts.graph.unparsed import UnitTestInputFixture, UnitTestOutputFixture
 from dbt.node_types import NodeType
+from dbt_semantic_interfaces.type_enums import MetricType
 
 
 def make_model(
@@ -501,41 +509,48 @@ def make_saved_query(pkg: str, name: str, metric: str, path=None):
 
 
 @pytest.fixture
-def macro_test_unique():
+def macro_test_unique() -> Macro:
     return make_macro(
         "dbt", "test_unique", "blablabla", depends_on_macros=["macro.dbt.default__test_unique"]
     )
 
 
 @pytest.fixture
-def macro_default_test_unique():
+def macro_default_test_unique() -> Macro:
     return make_macro("dbt", "default__test_unique", "blablabla")
 
 
 @pytest.fixture
-def macro_test_not_null():
+def macro_test_not_null() -> Macro:
     return make_macro(
         "dbt", "test_not_null", "blablabla", depends_on_macros=["macro.dbt.default__test_not_null"]
     )
 
 
 @pytest.fixture
-def macro_default_test_not_null():
+def macro_materialization_table_default() -> Macro:
+    macro = make_macro("dbt", "materialization_table_default", "SELECT 1")
+    macro.supported_languages = [ModelLanguage.sql]
+    return macro
+
+
+@pytest.fixture
+def macro_default_test_not_null() -> Macro:
     return make_macro("dbt", "default__test_not_null", "blabla")
 
 
 @pytest.fixture
-def seed():
+def seed() -> SeedNode:
     return make_seed("pkg", "seed")
 
 
 @pytest.fixture
-def source():
+def source() -> SourceDefinition:
     return make_source("pkg", "raw", "seed", identifier="seed")
 
 
 @pytest.fixture
-def ephemeral_model(source):
+def ephemeral_model(source) -> ModelNode:
     return make_model(
         "pkg",
         "ephemeral_model",
@@ -546,7 +561,7 @@ def ephemeral_model(source):
 
 
 @pytest.fixture
-def view_model(ephemeral_model):
+def view_model(ephemeral_model) -> ModelNode:
     return make_model(
         "pkg",
         "view_model",
@@ -558,7 +573,7 @@ def view_model(ephemeral_model):
 
 
 @pytest.fixture
-def table_model(ephemeral_model):
+def table_model(ephemeral_model) -> ModelNode:
     return make_model(
         "pkg",
         "table_model",
@@ -580,7 +595,7 @@ def table_model(ephemeral_model):
 
 
 @pytest.fixture
-def table_model_py(seed):
+def table_model_py(seed) -> ModelNode:
     return make_model(
         "pkg",
         "table_model_py",
@@ -593,7 +608,7 @@ def table_model_py(seed):
 
 
 @pytest.fixture
-def table_model_csv(seed):
+def table_model_csv(seed) -> ModelNode:
     return make_model(
         "pkg",
         "table_model_csv",
@@ -606,7 +621,7 @@ def table_model_csv(seed):
 
 
 @pytest.fixture
-def ext_source():
+def ext_source() -> SourceDefinition:
     return make_source(
         "ext",
         "ext_raw",
@@ -615,7 +630,7 @@ def ext_source():
 
 
 @pytest.fixture
-def ext_source_2():
+def ext_source_2() -> SourceDefinition:
     return make_source(
         "ext",
         "ext_raw",
@@ -624,7 +639,7 @@ def ext_source_2():
 
 
 @pytest.fixture
-def ext_source_other():
+def ext_source_other() -> SourceDefinition:
     return make_source(
         "ext",
         "raw",
@@ -633,7 +648,7 @@ def ext_source_other():
 
 
 @pytest.fixture
-def ext_source_other_2():
+def ext_source_other_2() -> SourceDefinition:
     return make_source(
         "ext",
         "raw",
@@ -642,7 +657,7 @@ def ext_source_other_2():
 
 
 @pytest.fixture
-def ext_model(ext_source):
+def ext_model(ext_source) -> ModelNode:
     return make_model(
         "ext",
         "ext_model",
@@ -652,7 +667,7 @@ def ext_model(ext_source):
 
 
 @pytest.fixture
-def union_model(seed, ext_source):
+def union_model(seed, ext_source) -> ModelNode:
     return make_model(
         "pkg",
         "union_model",
@@ -667,7 +682,7 @@ def union_model(seed, ext_source):
 
 
 @pytest.fixture
-def versioned_model_v1(seed):
+def versioned_model_v1(seed) -> ModelNode:
     return make_model(
         "pkg",
         "versioned_model",
@@ -682,7 +697,7 @@ def versioned_model_v1(seed):
 
 
 @pytest.fixture
-def versioned_model_v2(seed):
+def versioned_model_v2(seed) -> ModelNode:
     return make_model(
         "pkg",
         "versioned_model",
@@ -697,7 +712,7 @@ def versioned_model_v2(seed):
 
 
 @pytest.fixture
-def versioned_model_v3(seed):
+def versioned_model_v3(seed) -> ModelNode:
     return make_model(
         "pkg",
         "versioned_model",
@@ -712,7 +727,7 @@ def versioned_model_v3(seed):
 
 
 @pytest.fixture
-def versioned_model_v12_string(seed):
+def versioned_model_v12_string(seed) -> ModelNode:
     return make_model(
         "pkg",
         "versioned_model",
@@ -727,7 +742,7 @@ def versioned_model_v12_string(seed):
 
 
 @pytest.fixture
-def versioned_model_v4_nested_dir(seed):
+def versioned_model_v4_nested_dir(seed) -> ModelNode:
     return make_model(
         "pkg",
         "versioned_model",
@@ -743,27 +758,27 @@ def versioned_model_v4_nested_dir(seed):
 
 
 @pytest.fixture
-def table_id_unique(table_model):
+def table_id_unique(table_model) -> GenericTestNode:
     return make_unique_test("pkg", table_model, "id")
 
 
 @pytest.fixture
-def table_id_not_null(table_model):
+def table_id_not_null(table_model) -> GenericTestNode:
     return make_not_null_test("pkg", table_model, "id")
 
 
 @pytest.fixture
-def view_id_unique(view_model):
+def view_id_unique(view_model) -> GenericTestNode:
     return make_unique_test("pkg", view_model, "id")
 
 
 @pytest.fixture
-def ext_source_id_unique(ext_source):
+def ext_source_id_unique(ext_source) -> GenericTestNode:
     return make_unique_test("ext", ext_source, "id")
 
 
 @pytest.fixture
-def view_test_nothing(view_model):
+def view_test_nothing(view_model) -> SingularTestNode:
     return make_singular_test(
         "pkg",
         "view_test_nothing",
@@ -773,7 +788,7 @@ def view_test_nothing(view_model):
 
 
 @pytest.fixture
-def unit_test_table_model(table_model):
+def unit_test_table_model(table_model) -> UnitTestDefinition:
     return make_unit_test(
         "pkg",
         "unit_test_table_model",
@@ -783,12 +798,12 @@ def unit_test_table_model(table_model):
 
 # Support dots as namespace separators
 @pytest.fixture
-def namespaced_seed():
+def namespaced_seed() -> SeedNode:
     return make_seed("pkg", "mynamespace.seed")
 
 
 @pytest.fixture
-def namespace_model(source):
+def namespace_model(source) -> ModelNode:
     return make_model(
         "pkg",
         "mynamespace.ephemeral_model",
@@ -799,7 +814,7 @@ def namespace_model(source):
 
 
 @pytest.fixture
-def namespaced_union_model(seed, ext_source):
+def namespaced_union_model(seed, ext_source) -> ModelNode:
     return make_model(
         "pkg",
         "mynamespace.union_model",
@@ -846,7 +861,11 @@ def saved_query() -> SavedQuery:
         query_params=QueryParams(
             metrics=["my_metric"],
             group_by=[],
-            where=None,
+            where=WhereFilterIntersection(
+                where_filters=[
+                    WhereFilter(where_sql_template="1=1"),
+                ]
+            ),
         ),
         exports=[],
         unique_id=f"saved_query.{pkg}.{name}",
@@ -910,7 +929,7 @@ def nodes(
     namespaced_seed,
     namespace_model,
     namespaced_union_model,
-) -> list:
+) -> List[ManifestNode]:
     return [
         seed,
         ephemeral_model,
@@ -953,33 +972,75 @@ def macros(
     macro_default_test_unique,
     macro_test_not_null,
     macro_default_test_not_null,
-) -> list:
+    macro_materialization_table_default,
+) -> List[Macro]:
     return [
         macro_test_unique,
         macro_default_test_unique,
         macro_test_not_null,
         macro_default_test_not_null,
+        macro_materialization_table_default,
     ]
 
 
 @pytest.fixture
-def unit_tests(unit_test_table_model) -> list:
+def unit_tests(unit_test_table_model) -> List[UnitTestDefinition]:
     return [unit_test_table_model]
 
 
 @pytest.fixture
-def metrics() -> list:
-    return []
+def metrics(metric: Metric) -> List[Metric]:
+    return [metric]
 
 
 @pytest.fixture
-def semantic_models() -> list:
-    return []
+def semantic_models(semantic_model: SemanticModel) -> List[SemanticModel]:
+    return [semantic_model]
 
 
 @pytest.fixture
-def files() -> dict:
+def saved_queries(saved_query: SavedQuery) -> List[SavedQuery]:
+    return [saved_query]
+
+
+@pytest.fixture
+def files() -> Dict[str, AnySourceFile]:
     return {}
+
+
+def make_manifest(
+    disabled: Dict[str, List[GraphMemberNode]] = {},
+    docs: List[Documentation] = [],
+    exposures: List[Exposure] = [],
+    files: Dict[str, AnySourceFile] = {},
+    groups: List[Group] = [],
+    macros: List[Macro] = [],
+    metrics: List[Metric] = [],
+    nodes: List[ModelNode] = [],
+    saved_queries: List[SavedQuery] = [],
+    selectors: Dict[str, Any] = {},
+    semantic_models: List[SemanticModel] = [],
+    sources: List[SourceDefinition] = [],
+    unit_tests: List[UnitTestDefinition] = [],
+) -> Manifest:
+    manifest = Manifest(
+        nodes={n.unique_id: n for n in nodes},
+        sources={s.unique_id: s for s in sources},
+        macros={m.unique_id: m for m in macros},
+        unit_tests={t.unique_id: t for t in unit_tests},
+        semantic_models={s.unique_id: s for s in semantic_models},
+        docs={d.unique_id: d for d in docs},
+        files=files,
+        exposures={e.unique_id: e for e in exposures},
+        metrics={m.unique_id: m for m in metrics},
+        disabled=disabled,
+        selectors=selectors,
+        groups={g.unique_id: g for g in groups},
+        metadata=ManifestMetadata(adapter_type="postgres", project_name="pkg"),
+        saved_queries={s.unique_id: s for s in saved_queries},
+    )
+    manifest.build_parent_and_child_maps()
+    return manifest
 
 
 @pytest.fixture
@@ -993,21 +1054,15 @@ def manifest(
     metrics,
     semantic_models,
     files,
+    saved_queries,
 ) -> Manifest:
-    manifest = Manifest(
-        nodes={n.unique_id: n for n in nodes},
-        sources={s.unique_id: s for s in sources},
-        macros={m.unique_id: m for m in macros},
-        unit_tests={t.unique_id: t for t in unit_tests},
-        semantic_models={s.unique_id: s for s in semantic_models},
-        docs={},
+    return make_manifest(
+        nodes=nodes,
+        sources=sources,
+        macros=macros,
+        unit_tests=unit_tests,
+        semantic_models=semantic_models,
         files=files,
-        exposures={},
-        metrics={m.unique_id: m for m in metrics},
-        disabled={},
-        selectors={},
-        groups={},
-        metadata=ManifestMetadata(adapter_type="postgres", project_name="pkg"),
+        metrics=metrics,
+        saved_queries=saved_queries,
     )
-    manifest.build_parent_and_child_maps()
-    return manifest

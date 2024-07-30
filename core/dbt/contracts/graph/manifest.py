@@ -29,11 +29,13 @@ from dbt.adapters.exceptions import (
     DuplicateMacroInPackageError,
     DuplicateMaterializationNameError,
 )
+from dbt.adapters.factory import get_adapter_package_names
 
 # to preserve import paths
-from dbt.artifacts.resources import BaseResource, DeferRelation, NodeVersion
+from dbt.artifacts.resources import BaseResource, DeferRelation, NodeVersion, RefArgs
 from dbt.artifacts.resources.v1.config import NodeConfig
 from dbt.artifacts.schemas.manifest import ManifestMetadata, UniqueID, WritableManifest
+from dbt.clients.jinja_static import statically_parse_ref_or_source
 from dbt.contracts.files import (
     AnySourceFile,
     FileHash,
@@ -53,7 +55,6 @@ from dbt.contracts.graph.nodes import (
     ManifestNode,
     Metric,
     ModelNode,
-    ResultNode,
     SavedQuery,
     SeedNode,
     SemanticModel,
@@ -720,9 +721,6 @@ class MacroMethods:
         filter: Optional[Callable[[MacroCandidate], bool]] = None,
     ) -> CandidateList:
         """Find macros by their name."""
-        # avoid an import cycle
-        from dbt.adapters.factory import get_adapter_package_names
-
         candidates: CandidateList = CandidateList()
 
         macros_by_name = self.get_macros_by_name()
@@ -988,6 +986,7 @@ class Manifest(MacroMethods, dbtClassMixin):
             self.metrics.values(),
             self.semantic_models.values(),
             self.saved_queries.values(),
+            self.unit_tests.values(),
         )
         for resource in all_resources:
             resource_type_plural = resource.resource_type.pluralize()
@@ -1094,6 +1093,7 @@ class Manifest(MacroMethods, dbtClassMixin):
             metrics=cls._map_resources_to_map_nodes(writable_manifest.metrics),
             groups=cls._map_resources_to_map_nodes(writable_manifest.groups),
             semantic_models=cls._map_resources_to_map_nodes(writable_manifest.semantic_models),
+            saved_queries=cls._map_resources_to_map_nodes(writable_manifest.saved_queries),
             selectors={
                 selector_id: selector
                 for selector_id, selector in writable_manifest.selectors.items()
@@ -1566,13 +1566,15 @@ class Manifest(MacroMethods, dbtClassMixin):
         self.exposures[exposure.unique_id] = exposure
         source_file.exposures.append(exposure.unique_id)
 
-    def add_metric(self, source_file: SchemaSourceFile, metric: Metric, generated: bool = False):
+    def add_metric(
+        self, source_file: SchemaSourceFile, metric: Metric, generated_from: Optional[str] = None
+    ):
         _check_duplicates(metric, self.metrics)
         self.metrics[metric.unique_id] = metric
-        if not generated:
+        if not generated_from:
             source_file.metrics.append(metric.unique_id)
         else:
-            source_file.generated_metrics.append(metric.unique_id)
+            source_file.add_metrics_from_measures(generated_from, metric.unique_id)
 
     def add_group(self, source_file: SchemaSourceFile, group: Group):
         _check_duplicates(group, self.groups)
@@ -1586,7 +1588,7 @@ class Manifest(MacroMethods, dbtClassMixin):
         else:
             self.disabled[node.unique_id] = [node]
 
-    def add_disabled(self, source_file: AnySourceFile, node: ResultNode, test_from=None):
+    def add_disabled(self, source_file: AnySourceFile, node: GraphMemberNode, test_from=None):
         self.add_disabled_nofile(node)
         if isinstance(source_file, SchemaSourceFile):
             if isinstance(node, GenericTestNode):
@@ -1634,6 +1636,22 @@ class Manifest(MacroMethods, dbtClassMixin):
 
     # end of methods formerly in ParseResult
 
+    def find_node_from_ref_or_source(
+        self, expression: str
+    ) -> Optional[Union[ModelNode, SourceDefinition]]:
+        ref_or_source = statically_parse_ref_or_source(expression)
+
+        node = None
+        if isinstance(ref_or_source, RefArgs):
+            node = self.ref_lookup.find(
+                ref_or_source.name, ref_or_source.package, ref_or_source.version, self
+            )
+        else:
+            source_name, source_table_name = ref_or_source[0], ref_or_source[1]
+            node = self.source_lookup.find(f"{source_name}.{source_table_name}", None, self)
+
+        return node
+
     # Provide support for copy.deepcopy() - we just need to avoid the lock!
     # pickle and deepcopy use this. It returns a callable object used to
     # create the initial version of the object and a tuple of arguments
@@ -1677,9 +1695,9 @@ class MacroManifest(MacroMethods):
         self.macros = macros
         self.metadata = ManifestMetadata(
             user_id=tracking.active_user.id if tracking.active_user else None,
-            send_anonymous_usage_stats=get_flags().SEND_ANONYMOUS_USAGE_STATS
-            if tracking.active_user
-            else None,
+            send_anonymous_usage_stats=(
+                get_flags().SEND_ANONYMOUS_USAGE_STATS if tracking.active_user else None
+            ),
         )
         # This is returned by the 'graph' context property
         # in the ProviderContext class.
