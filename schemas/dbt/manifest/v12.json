@@ -7942,6 +7942,12 @@
               "type": "string"
             }
           },
+          "vars": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            }
+          },
           "relation_name": {
             "anyOf": [
               {
@@ -8308,6 +8314,12 @@
             "additionalProperties": true
           },
           "unrendered_config": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "vars": {
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -17596,6 +17608,12 @@
                         "type": "string"
                       }
                     },
+                    "vars": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      }
+                    },
                     "relation_name": {
                       "anyOf": [
                         {
@@ -17760,6 +17778,12 @@
                       "additionalProperties": true
                     },
                     "unrendered_config": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      }
+                    },
+                    "vars": {
                       "type": "object",
                       "propertyNames": {
                         "type": "string"

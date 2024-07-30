@@ -1741,7 +1741,6 @@ class TestParsedMacro(ContractTestCase):
             "description": "my macro description",
             "docs": {"show": True},
             "arguments": [],
-            "vars": {},
         }
 
     def test_ok(self):
@@ -1758,7 +1757,6 @@ class TestParsedMacro(ContractTestCase):
             meta={},
             description="my macro description",
             arguments=[],
-            vars={},
         )
         assert_symmetric(macro, macro_dict)
         pickle.loads(pickle.dumps(macro))
