@@ -413,9 +413,6 @@ class CompiledNode(CompiledResource, ParsedNode):
     def depends_on_macros(self):
         return self.depends_on.macros
 
-    def same_contents(self, old, adapter_type) -> bool:
-        return super().same_contents(old, adapter_type)
-
 
 # ====================================
 # CompiledNode subclasses
@@ -1256,6 +1253,9 @@ class SourceDefinition(
             old.unrendered_config,
         )
 
+    def same_vars(self, other: "SourceDefinition") -> bool:
+        return self.vars == other.vars
+
     def same_contents(self, old: Optional["SourceDefinition"]) -> bool:
         # existing when it didn't before is a change!
         if old is None:
@@ -1276,6 +1276,7 @@ class SourceDefinition(
             and self.same_quoting(old)
             and self.same_freshness(old)
             and self.same_external(old)
+            and self.same_vars(old)
             and True
         )
 
@@ -1372,6 +1373,9 @@ class Exposure(GraphNode, ExposureResource):
             old.unrendered_config,
         )
 
+    def same_vars(self, old: "Exposure") -> bool:
+        return self.vars == old.vars
+
     def same_contents(self, old: Optional["Exposure"]) -> bool:
         # existing when it didn't before is a change!
         # metadata/tags changes are not "changes"
@@ -1388,6 +1392,7 @@ class Exposure(GraphNode, ExposureResource):
             and self.same_label(old)
             and self.same_depends_on(old)
             and self.same_config(old)
+            and self.same_vars(old)
             and True
         )
 
@@ -1633,6 +1638,7 @@ class ParsedNodePatch(ParsedPatch):
     latest_version: Optional[NodeVersion]
     constraints: List[Dict[str, Any]]
     deprecation_date: Optional[datetime]
+    vars: Dict[str, Any]
     time_spine: Optional[TimeSpine] = None
 
 
