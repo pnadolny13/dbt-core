@@ -43,6 +43,7 @@ from dbt.contracts.graph.nodes import (
 from dbt.contracts.graph.unparsed import UnitTestInputFixture, UnitTestOutputFixture
 from dbt.node_types import NodeType
 from dbt_semantic_interfaces.type_enums import MetricType
+from tests.unit.utils import normalize
 
 
 def make_model(
@@ -967,14 +968,44 @@ def sources(
 
 
 @pytest.fixture
+def name_generation_macros() -> List[Macro]:
+    name_sql = {}
+    for component in ("database", "schema", "alias"):
+        if component == "alias":
+            source = "node.name"
+        else:
+            source = f"target.{component}"
+        name = f"generate_{component}_name"
+        sql = f"{{% macro {name}(value, node) %}} {{% if value %}} {{{{ value }}}} {{% else %}} {{{{ {source} }}}} {{% endif %}} {{% endmacro %}}"
+        name_sql[name] = sql
+
+    name_macros: List[Macro] = []
+    for name, sql in name_sql.items():
+        name_macros.append(
+            Macro(
+                name=name,
+                resource_type=NodeType.Macro,
+                unique_id=f"macro.root.{name}",
+                package_name="root",
+                original_file_path=normalize("macros/macro.sql"),
+                path=normalize("macros/macro.sql"),
+                macro_sql=sql,
+            )
+        )
+
+    return name_macros
+
+
+@pytest.fixture
 def macros(
     macro_test_unique,
     macro_default_test_unique,
     macro_test_not_null,
     macro_default_test_not_null,
     macro_materialization_table_default,
+    name_generation_macros,
 ) -> List[Macro]:
-    return [
+    return name_generation_macros + [
         macro_test_unique,
         macro_default_test_unique,
         macro_test_not_null,
