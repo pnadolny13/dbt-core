@@ -62,7 +62,7 @@ class GitPinnedPackage(GitPackageMixin, PinnedPackage):
         git_scrubbed = scrub_secrets(self.git_unrendered, env_secrets())
         if self.git_unrendered != git_scrubbed:
             warn_or_error(DepsScrubbedPackageName(package_name=git_scrubbed))
-        ret = {
+        ret: Dict[str, Optional[str]] = {
             "git": git_scrubbed,
             "revision": self.revision,
         }
