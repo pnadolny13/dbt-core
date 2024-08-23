@@ -28,6 +28,7 @@ from dbt.config.profile import read_profile
 from dbt.constants import DBT_PROJECT_FILE_NAME
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import GraphMemberNode
+from dbt.contracts.results import BaseResult
 from dbt.events.types import (
     CatchableExceptionOnRun,
     GenericExceptionOnRun,
@@ -194,7 +195,7 @@ class BaseRunner(metaclass=ABCMeta):
     def _node_build_path(self) -> Optional[str]:
         return self.node.build_path if hasattr(self.node, "build_path") else None
 
-    def get_result_status(self, result) -> Dict[str, str]:
+    def get_result_status(self, result: BaseResult) -> Dict[str, str]:
         if result.status == NodeStatus.Error:
             return {"node_status": "error", "node_error": str(result.message)}
         elif result.status == NodeStatus.Skipped:
