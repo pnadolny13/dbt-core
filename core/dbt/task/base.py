@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Set
 import dbt.exceptions
 import dbt_common.exceptions.base
 from dbt import tracking
+from dbt.adapters.base.impl import BaseAdapter
 from dbt.artifacts.resources.types import NodeType
 from dbt.artifacts.schemas.results import (
     NodeStatus,
@@ -26,6 +27,7 @@ from dbt.config import RuntimeConfig
 from dbt.config.profile import read_profile
 from dbt.constants import DBT_PROJECT_FILE_NAME
 from dbt.contracts.graph.manifest import Manifest
+from dbt.contracts.graph.nodes import GraphMemberNode
 from dbt.events.types import (
     CatchableExceptionOnRun,
     GenericExceptionOnRun,
@@ -165,18 +167,25 @@ class ExecutionContext:
 
 
 class BaseRunner(metaclass=ABCMeta):
-    def __init__(self, config, adapter, node, node_index, num_nodes) -> None:
-        self.config = config
-        self.compiler = Compiler(config)
-        self.adapter = adapter
-        self.node = node
-        self.node_index = node_index
-        self.num_nodes = num_nodes
+    def __init__(
+        self,
+        config: RuntimeConfig,
+        adapter: BaseAdapter,
+        node: GraphMemberNode,
+        node_index: int,
+        num_nodes: int,
+    ) -> None:
+        self.config: RuntimeConfig = config
+        self.compiler: Compiler = Compiler(config)
+        self.adapter: BaseAdapter = adapter
+        self.node: GraphMemberNode = node
+        self.node_index: int = node_index
+        self.num_nodes: int = num_nodes
 
-        self.skip = False
+        self.skip: bool = False
         self.skip_cause: Optional[RunResult] = None
 
-        self.run_ephemeral_models = False
+        self.run_ephemeral_models: bool = False
 
     @abstractmethod
     def compile(self, manifest: Manifest) -> Any:
