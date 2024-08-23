@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 from dbt.adapters.contracts.connection import AdapterRequiredConfig
 from dbt.clients.jinja import MacroStack
@@ -22,7 +22,7 @@ class ManifestContext(ConfiguredContext):
     def __init__(
         self,
         config: AdapterRequiredConfig,
-        manifest: Manifest | MacroManifest,
+        manifest: Union[Manifest, MacroManifest],
         search_package: str,
     ) -> None:
         super().__init__(config)

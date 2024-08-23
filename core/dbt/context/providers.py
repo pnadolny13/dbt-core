@@ -815,7 +815,7 @@ class ProviderContext(ManifestContext):
         self,
         model,
         config: RuntimeConfig,
-        manifest: Manifest | MacroManifest,
+        manifest: Union[Manifest, MacroManifest],
         provider: Provider,
         context_config: Optional[ContextConfig],
     ) -> None:
