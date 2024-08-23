@@ -27,7 +27,7 @@ from dbt.config import RuntimeConfig
 from dbt.config.profile import read_profile
 from dbt.constants import DBT_PROJECT_FILE_NAME
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.nodes import GraphMemberNode
+from dbt.contracts.graph.nodes import ManifestNode
 from dbt.contracts.results import BaseResult
 from dbt.events.types import (
     CatchableExceptionOnRun,
@@ -172,14 +172,14 @@ class BaseRunner(metaclass=ABCMeta):
         self,
         config: RuntimeConfig,
         adapter: BaseAdapter,
-        node: GraphMemberNode,
+        node: ManifestNode,
         node_index: int,
         num_nodes: int,
     ) -> None:
         self.config: RuntimeConfig = config
         self.compiler: Compiler = Compiler(config)
         self.adapter: BaseAdapter = adapter
-        self.node: GraphMemberNode = node
+        self.node: ManifestNode = node
         self.node_index: int = node_index
         self.num_nodes: int = num_nodes
 
@@ -207,7 +207,7 @@ class BaseRunner(metaclass=ABCMeta):
         else:
             return {"node_status": "passed"}
 
-    def run_with_hooks(self, manifest):
+    def run_with_hooks(self, manifest: Manifest):
         if self.skip:
             return self.on_skip()
 
