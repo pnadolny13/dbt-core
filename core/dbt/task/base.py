@@ -443,7 +443,7 @@ class BaseRunner(metaclass=ABCMeta):
     def after_execute(self, result: RunResult) -> None:
         raise NotImplementedError("The `after_execute` function hasn't been implemented")
 
-    def _skip_caused_by_ephemeral_failure(self):
+    def _skip_caused_by_ephemeral_failure(self) -> bool:
         if self.skip_cause is None or self.skip_cause.node is None:
             return False
         return self.skip_cause.node.is_ephemeral_model
