@@ -17,6 +17,7 @@ from dbt.adapters.base.impl import BaseAdapter
 from dbt.artifacts.resources.types import NodeType
 from dbt.artifacts.schemas.results import (
     NodeStatus,
+    ResultStatus,
     RunningStatus,
     RunStatus,
     TimingInfo,
@@ -231,7 +232,7 @@ class BaseRunner(metaclass=ABCMeta):
         self,
         node: ResultNode,
         start_time: float,
-        status: RunStatus,
+        status: ResultStatus,
         timing_info: List[TimingInfo],
         message: Optional[str] = None,
         agate_table: Optional[Table] = None,

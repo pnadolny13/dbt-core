@@ -81,9 +81,12 @@ class FreshnessStatus(StrEnum):
     RuntimeErr = NodeStatus.RuntimeErr
 
 
+ResultStatus = Union[RunStatus, TestStatus, FreshnessStatus]
+
+
 @dataclass
 class BaseResult(dbtClassMixin):
-    status: Union[RunStatus, TestStatus, FreshnessStatus]
+    status: ResultStatus
     timing: List[TimingInfo]
     thread_id: str
     execution_time: float
