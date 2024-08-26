@@ -384,7 +384,7 @@ class BaseRunner(metaclass=ABCMeta):
             error = self._handle_generic_exception(e, ctx)
         return error
 
-    def safe_run(self, manifest):
+    def safe_run(self, manifest: Manifest) -> RunResult:
         started = time.time()
         ctx = ExecutionContext(self.node)
         error = None
@@ -415,7 +415,7 @@ class BaseRunner(metaclass=ABCMeta):
             result = self.ephemeral_result(ctx.node, started, ctx.timing)
         return result
 
-    def _safe_release_connection(self):
+    def _safe_release_connection(self) -> Optional[str]:
         """Try to release a connection. If an exception is hit, log and return
         the error string.
         """
