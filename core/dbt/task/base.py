@@ -431,8 +431,8 @@ class BaseRunner(metaclass=ABCMeta):
 
         return None
 
-    def before_execute(self):
-        raise NotImplementedError()
+    def before_execute(self) -> None:
+        raise NotImplementedError("The `before_execute` function hasn't been implemented")
 
     def execute(self, compiled_node: ResultNode, manifest: Manifest) -> RunResult:
         raise NotImplementedError(msg="The `execute` function hasn't been implemented")
@@ -440,8 +440,8 @@ class BaseRunner(metaclass=ABCMeta):
     def run(self, compiled_node: ResultNode, manifest: Manifest) -> RunResult:
         return self.execute(compiled_node, manifest)
 
-    def after_execute(self, result):
-        raise NotImplementedError()
+    def after_execute(self, result: RunResult) -> None:
+        raise NotImplementedError("The `after_execute` function hasn't been implemented")
 
     def _skip_caused_by_ephemeral_failure(self):
         if self.skip_cause is None or self.skip_cause.node is None:
