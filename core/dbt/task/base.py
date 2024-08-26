@@ -165,9 +165,9 @@ class ExecutionContext:
     timing information and the newest (compiled vs executed) form of the node.
     """
 
-    def __init__(self, node) -> None:
+    def __init__(self, node: ResultNode) -> None:
         self.timing: List[TimingInfo] = []
-        self.node = node
+        self.node: ResultNode = node
 
 
 class BaseRunner(metaclass=ABCMeta):
