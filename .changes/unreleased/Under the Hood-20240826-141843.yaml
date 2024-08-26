@@ -1,0 +1,6 @@
+kind: Under the Hood
+body: Add type hinting to BaseRunner class to increase stability guarnatees
+time: 2024-08-26T14:18:43.834018-05:00
+custom:
+  Author: QMalcolm
+  Issue: "10606"
