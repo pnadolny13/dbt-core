@@ -448,7 +448,7 @@ class BaseRunner(metaclass=ABCMeta):
             return False
         return self.skip_cause.node.is_ephemeral_model
 
-    def on_skip(self):
+    def on_skip(self) -> RunResult:
         schema_name = getattr(self.node, "schema", "")
         node_name = self.node.name
 
@@ -464,7 +464,9 @@ class BaseRunner(metaclass=ABCMeta):
                         relation=node_name,
                         index=self.node_index,
                         total=self.num_nodes,
-                        status=self.skip_cause.status,
+                        status=(
+                            self.skip_cause.status if self.skip_cause is not None else "unknown"
+                        ),
                     )
                 )
                 # skip_cause here should be the run_result from the ephemeral model
@@ -498,7 +500,7 @@ class BaseRunner(metaclass=ABCMeta):
         node_result = RunResult.from_node(self.node, RunStatus.Skipped, error_message)
         return node_result
 
-    def do_skip(self, cause=None):
+    def do_skip(self, cause: Optional[RunResult] = None) -> None:
         self.skip = True
         self.skip_cause = cause
 
