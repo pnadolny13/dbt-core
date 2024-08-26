@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 from contextlib import nullcontext
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Union
 
 from agate import Table
 
@@ -338,7 +338,11 @@ class BaseRunner(metaclass=ABCMeta):
 
         return result
 
-    def _handle_catchable_exception(self, e, ctx):
+    def _handle_catchable_exception(
+        self,
+        e: Union[CompilationError, DbtRuntimeError],
+        ctx: ExecutionContext,
+    ) -> str:
         if e.node is None:
             e.add_node(ctx.node)
 
@@ -349,7 +353,7 @@ class BaseRunner(metaclass=ABCMeta):
         )
         return str(e)
 
-    def _handle_internal_exception(self, e, ctx):
+    def _handle_internal_exception(self, e: DbtInternalError, ctx: ExecutionContext) -> str:
         fire_event(
             InternalErrorOnRun(
                 build_path=self._node_build_path(), exc=str(e), node_info=get_node_info()
@@ -357,7 +361,7 @@ class BaseRunner(metaclass=ABCMeta):
         )
         return str(e)
 
-    def _handle_generic_exception(self, e, ctx):
+    def _handle_generic_exception(self, e: Exception, ctx: ExecutionContext) -> str:
         fire_event(
             GenericExceptionOnRun(
                 build_path=self._node_build_path(),
@@ -370,7 +374,7 @@ class BaseRunner(metaclass=ABCMeta):
 
         return str(e)
 
-    def handle_exception(self, e, ctx):
+    def handle_exception(self, e, ctx) -> str:
         catchable_errors = (CompilationError, DbtRuntimeError)
         if isinstance(e, catchable_errors):
             error = self._handle_catchable_exception(e, ctx)
