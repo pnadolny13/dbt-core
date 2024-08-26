@@ -29,7 +29,7 @@ from dbt.config import RuntimeConfig
 from dbt.config.profile import read_profile
 from dbt.constants import DBT_PROJECT_FILE_NAME
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.nodes import ManifestNode
+from dbt.contracts.graph.nodes import ResultNode
 from dbt.contracts.results import BaseResult
 from dbt.events.types import (
     CatchableExceptionOnRun,
@@ -174,14 +174,14 @@ class BaseRunner(metaclass=ABCMeta):
         self,
         config: RuntimeConfig,
         adapter: BaseAdapter,
-        node: ManifestNode,
+        node: ResultNode,
         node_index: int,
         num_nodes: int,
     ) -> None:
         self.config: RuntimeConfig = config
         self.compiler: Compiler = Compiler(config)
         self.adapter: BaseAdapter = adapter
-        self.node: ManifestNode = node
+        self.node: ResultNode = node
         self.node_index: int = node_index
         self.num_nodes: int = num_nodes
 
@@ -229,7 +229,7 @@ class BaseRunner(metaclass=ABCMeta):
 
     def _build_run_result(
         self,
-        node: ManifestNode,
+        node: ResultNode,
         start_time: float,
         status: RunStatus,
         timing_info: List[TimingInfo],
@@ -256,7 +256,7 @@ class BaseRunner(metaclass=ABCMeta):
 
     def error_result(
         self,
-        node: ManifestNode,
+        node: ResultNode,
         message: str,
         start_time: float,
         timing_info: List[TimingInfo],
@@ -271,7 +271,7 @@ class BaseRunner(metaclass=ABCMeta):
 
     def ephemeral_result(
         self,
-        node: ManifestNode,
+        node: ResultNode,
         start_time: float,
         timing_info: List[TimingInfo],
     ) -> RunResult:
