@@ -430,10 +430,10 @@ class BaseRunner(metaclass=ABCMeta):
     def before_execute(self):
         raise NotImplementedError()
 
-    def execute(self, compiled_node, manifest):
-        raise NotImplementedError()
+    def execute(self, compiled_node: ResultNode, manifest: Manifest) -> RunResult:
+        raise NotImplementedError(msg="The `execute` function hasn't been implemented")
 
-    def run(self, compiled_node, manifest):
+    def run(self, compiled_node: ResultNode, manifest: Manifest) -> RunResult:
         return self.execute(compiled_node, manifest)
 
     def after_execute(self, result):
