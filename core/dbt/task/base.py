@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from agate import Table
+
 import dbt.exceptions
 import dbt_common.exceptions.base
 from dbt import tracking
@@ -227,15 +229,15 @@ class BaseRunner(metaclass=ABCMeta):
 
     def _build_run_result(
         self,
-        node,
-        start_time,
-        status,
-        timing_info,
-        message,
-        agate_table=None,
-        adapter_response=None,
-        failures=None,
-    ):
+        node: ManifestNode,
+        start_time: float,
+        status: RunStatus,
+        timing_info: List[TimingInfo],
+        message: Optional[str] = None,
+        agate_table: Optional[Table] = None,
+        adapter_response: Optional[Dict[str, Any]] = None,
+        failures: Optional[int] = None,
+    ) -> RunResult:
         execution_time = time.time() - start_time
         thread_id = threading.current_thread().name
         if adapter_response is None:
