@@ -254,7 +254,13 @@ class BaseRunner(metaclass=ABCMeta):
             failures=failures,
         )
 
-    def error_result(self, node, message, start_time, timing_info):
+    def error_result(
+        self,
+        node: ManifestNode,
+        message: str,
+        start_time: float,
+        timing_info: List[TimingInfo],
+    ) -> RunResult:
         return self._build_run_result(
             node=node,
             start_time=start_time,
@@ -263,7 +269,12 @@ class BaseRunner(metaclass=ABCMeta):
             message=message,
         )
 
-    def ephemeral_result(self, node, start_time, timing_info):
+    def ephemeral_result(
+        self,
+        node: ManifestNode,
+        start_time: float,
+        timing_info: List[TimingInfo],
+    ) -> RunResult:
         return self._build_run_result(
             node=node,
             start_time=start_time,
@@ -272,7 +283,12 @@ class BaseRunner(metaclass=ABCMeta):
             message=None,
         )
 
-    def from_run_result(self, result, start_time, timing_info):
+    def from_run_result(
+        self,
+        result: RunResult,
+        start_time: float,
+        timing_info: List[TimingInfo],
+    ) -> RunResult:
         return self._build_run_result(
             node=result.node,
             start_time=start_time,
