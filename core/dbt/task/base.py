@@ -301,7 +301,11 @@ class BaseRunner(metaclass=ABCMeta):
             failures=result.failures,
         )
 
-    def compile_and_execute(self, manifest, ctx):
+    def compile_and_execute(
+        self,
+        manifest: Manifest,
+        ctx: ExecutionContext,
+    ) -> Optional[RunResult]:
         result = None
         with (
             self.adapter.connection_named(self.node.unique_id, self.node)
