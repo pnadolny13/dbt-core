@@ -321,7 +321,15 @@ EXPECTED_MODEL_FLAGS = {
     "WHICH": "run",
 }
 
-EXPECTED_MODEL_CONTEXT = {
+
+def expand_builtins(k, v):
+    return {
+        k: v,
+        ("builtins", *k): v,
+    }
+
+
+COMMON_CONTEXT = {
     ("var",): {},
     (
         "env_var",
@@ -372,23 +380,17 @@ EXPECTED_MODEL_CONTEXT = {
     ("execute",): "True",
     ("database",): "dbt",
     ("schema",): "analytics",
-    ("adapter",): "<dbt.context.providers.RuntimeDatabaseWrapper object>",
-    ("column",): "<MagicMock name='get_adapter().Column'>",
     ("graph",): "<MagicMock name='mock.flat_graph'>",
     ("model",): "<MagicMock name='model_one.to_dict()'>",
     ("pre_hooks",): "[]",
     ("post_hooks",): "[]",
     ("sql",): "<MagicMock name='model_one.compiled_code'>",
     ("sql_now",): "<MagicMock name='get_adapter().date_function()'>",
-    (
-        "adapter_macro",
-    ): "<bound method ProviderContext.adapter_macro of <dbt.context.providers.ModelContext object>>",
     ("selected_resources",): "[]",
     (
         "submit_python_job",
     ): "<bound method ProviderContext.submit_python_job of <dbt.context.providers.ModelContext object>>",
     ("compiled_code",): "<MagicMock name='model_one.compiled_code'>",
-    ("this",): "<MagicMock name='get_adapter().Relation.create_from()'>",
     ("defer_relation",): "<MagicMock name='get_adapter().Relation.create_from()'>",
     ("macro_a",): "<dbt.clients.jinja.MacroGenerator object>",
     ("macro_b",): "<dbt.clients.jinja.MacroGenerator object>",
@@ -414,7 +416,6 @@ EXPECTED_MODEL_CONTEXT = {
     ("builtins", "diff_of_two_dicts"): "<function BaseContext.diff_of_two_dicts>",
     ("builtins", "local_md5"): "<function BaseContext.local_md5>",
     ("builtins", "project_name"): "root",
-    ("builtins", "context_macro_stack"): "<dbt.clients.jinja.MacroStack object>",
     (
         "builtins",
         "load_result",
@@ -446,30 +447,18 @@ EXPECTED_MODEL_CONTEXT = {
     ("builtins", "ref"): "<dbt.context.providers.RuntimeRefResolver object>",
     ("builtins", "source"): "<dbt.context.providers.RuntimeSourceResolver object>",
     ("builtins", "metric"): "<dbt.context.providers.RuntimeMetricResolver object>",
-    ("builtins", "config"): "<dbt.context.providers.RuntimeConfigObject object>",
-    ("builtins", "execute"): "True",
-    ("builtins", "database"): "dbt",
     ("builtins", "schema"): "analytics",
-    ("builtins", "adapter"): "<dbt.context.providers.RuntimeDatabaseWrapper object>",
-    ("builtins", "column"): "<MagicMock name='get_adapter().Column'>",
     ("builtins", "graph"): "<MagicMock name='mock.flat_graph'>",
     ("builtins", "model"): "<MagicMock name='model_one.to_dict()'>",
     ("builtins", "pre_hooks"): "[]",
     ("builtins", "post_hooks"): "[]",
     ("builtins", "sql"): "<MagicMock name='model_one.compiled_code'>",
     ("builtins", "sql_now"): "<MagicMock name='get_adapter().date_function()'>",
-    (
-        "builtins",
-        "adapter_macro",
-    ): "<bound method ProviderContext.adapter_macro of <dbt.context.providers.ModelContext object>>",
     ("builtins", "selected_resources"): "[]",
     (
         "builtins",
         "submit_python_job",
     ): "<bound method ProviderContext.submit_python_job of <dbt.context.providers.ModelContext object>>",
-    ("builtins", "compiled_code"): "<MagicMock name='model_one.compiled_code'>",
-    ("builtins", "this"): "<MagicMock name='get_adapter().Relation.create_from()'>",
-    ("builtins", "defer_relation"): "<MagicMock name='get_adapter().Relation.create_from()'>",
     ("target", "host"): "localhost",
     ("target", "port"): "1",
     ("target", "user"): "test",
@@ -537,8 +526,6 @@ EXPECTED_MODEL_CONTEXT = {
         "exceptions",
         "warn_snapshot_timestamp_data_types",
     ): "<function warn_snapshot_timestamp_data_types>",
-    ("api", "Relation"): "<dbt.context.providers.RelationProxy object>",
-    ("api", "Column"): "<MagicMock name='get_adapter().Column'>",
     ("root", "macro_a"): "<dbt.clients.jinja.MacroGenerator object>",
     ("root", "macro_b"): "<dbt.clients.jinja.MacroGenerator object>",
     ("modules", "pytz", "timezone"): "<function timezone>",
@@ -548,7 +535,7 @@ EXPECTED_MODEL_CONTEXT = {
     ("modules", "pytz", "NonExistentTimeError"): "<class 'pytz.exceptions.NonExistentTimeError'>",
     ("modules", "pytz", "UnknownTimeZoneError"): "<class 'pytz.exceptions.UnknownTimeZoneError'>",
     ("modules", "pytz", "all_timezones"): str(pytz.all_timezones),
-    ("modules", "pytz", "all_timezones_set"): pytz.all_timezones_set,
+    ("modules", "pytz", "all_timezones_set"): set(pytz.all_timezones_set),
     ("modules", "pytz", "common_timezones"): str(pytz.common_timezones),
     ("modules", "pytz", "common_timezones_set"): set(),
     ("modules", "pytz", "BaseTzInfo"): "<class 'pytz.tzinfo.BaseTzInfo'>",
@@ -611,6 +598,29 @@ EXPECTED_MODEL_CONTEXT = {
     ("invocation_args_dict", "warn_error_options", "exclude"): "[]",
     **PYTZ_COUNTRY_TIMEZONES,
     **PYTZ_COUNTRY_NAMES,
+}
+
+EXPECTED_MODEL_CONTEXT = {
+    **COMMON_CONTEXT,
+    **expand_builtins(("adapter",), "<dbt.context.providers.RuntimeDatabaseWrapper object>"),
+    **expand_builtins(
+        ("adapter_macro",),
+        "<bound method ProviderContext.adapter_macro of <dbt.context.providers.ModelContext object>>",
+    ),
+    **expand_builtins(("column",), "<MagicMock name='get_adapter().Column'>"),
+    **expand_builtins(("this",), "<MagicMock name='get_adapter().Relation.create_from()'>"),
+    ("api", "Column"): "<MagicMock name='get_adapter().Column'>",
+    ("api", "Relation"): "<dbt.context.providers.RelationProxy object>",
+    ("builtins", "compiled_code"): "<MagicMock name='model_one.compiled_code'>",
+    ("builtins", "config"): "<dbt.context.providers.RuntimeConfigObject object>",
+    ("builtins", "context_macro_stack"): "<dbt.clients.jinja.MacroStack object>",
+    ("builtins", "database"): "dbt",
+    ("builtins", "defer_relation"): "<MagicMock name='get_adapter().Relation.create_from()'>",
+    ("builtins", "execute"): "True",
+}
+
+EXPECTED_DOCS_RUNTIME_CONTEXT = {
+    **COMMON_CONTEXT,
 }
 
 
@@ -869,7 +879,8 @@ def test_model_runtime_context(config_postgres, manifest_fx, get_adapter, get_in
 
 def test_docs_runtime_context(config_postgres):
     ctx = docs.generate_runtime_docs_context(config_postgres, mock_model(), [], "root")
-    assert_has_keys(REQUIRED_DOCS_KEYS, MAYBE_KEYS, ctx)
+    actual_docs_runtime_context = {k: v for (k, v) in walk_dict(ctx)}
+    assert actual_docs_runtime_context == EXPECTED_DOCS_RUNTIME_CONTEXT
 
 
 def test_macro_namespace_duplicates(config_postgres, manifest_fx):
