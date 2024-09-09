@@ -322,18 +322,8 @@ EXPECTED_MODEL_FLAGS = {
 }
 
 
-def expand_builtins(d):
-    o = {}
-
-    for k, v in d.items():
-        if isinstance(k, str):
-            o[(k,)] = v
-            o[("builtins", k)] = v
-        else:
-            o[k] = v
-            o[("builtins",) + k] = v
-
-    return o
+def add_prefix(path_dict, prefix):
+    return {prefix + k: v for k, v in path_dict.items()}
 
 
 COMMON_CONTEXT = {
@@ -516,42 +506,63 @@ COMMON_CONTEXT = {
     **PYTZ_COUNTRY_NAMES,
 }
 
+MODEL_BUILTINS = {
+    ("adapter",): "<dbt.context.providers.RuntimeDatabaseWrapper object>",
+    (
+        "adapter_macro",
+    ): "<bound method ProviderContext.adapter_macro of <dbt.context.providers.ModelContext object>>",
+    ("column",): "<MagicMock name='get_adapter().Column'>",
+    ("compiled_code",): "<MagicMock name='model_one.compiled_code'>",
+    ("config",): "<dbt.context.providers.RuntimeConfigObject object>",
+    ("context_macro_stack",): "<dbt.clients.jinja.MacroStack object>",
+    ("database",): "dbt",
+    ("defer_relation",): "<MagicMock name='get_adapter().Relation.create_from()'>",
+    (
+        "env_var",
+    ): "<bound method ProviderContext.env_var of <dbt.context.providers.ModelContext object>>",
+    ("execute",): "True",
+    ("graph",): "<MagicMock name='mock.flat_graph'>",
+    (
+        "load_agate_table",
+    ): "<bound method ProviderContext.load_agate_table of <dbt.context.providers.ModelContext object>>",
+    (
+        "load_result",
+    ): "<bound method ProviderContext.load_result of <dbt.context.providers.ModelContext object>>",
+    ("metric",): "<dbt.context.providers.RuntimeMetricResolver object>",
+    ("model",): "<MagicMock name='model_one.to_dict()'>",
+    ("post_hooks",): "[]",
+    ("pre_hooks",): "[]",
+    ("ref",): "<dbt.context.providers.RuntimeRefResolver object>",
+    (
+        "render",
+    ): "<bound method ProviderContext.render of <dbt.context.providers.ModelContext object>>",
+    ("schema",): "analytics",
+    ("selected_resources",): "[]",
+    ("source",): "<dbt.context.providers.RuntimeSourceResolver object>",
+    ("sql",): "<MagicMock name='model_one.compiled_code'>",
+    ("sql_now",): "<MagicMock name='get_adapter().date_function()'>",
+    (
+        "store_raw_result",
+    ): "<bound method ProviderContext.store_raw_result of <dbt.context.providers.ModelContext object>>",
+    (
+        "store_result",
+    ): "<bound method ProviderContext.store_result of <dbt.context.providers.ModelContext object>>",
+    (
+        "submit_python_job",
+    ): "<bound method ProviderContext.submit_python_job of <dbt.context.providers.ModelContext object>>",
+    ("this",): "<MagicMock name='get_adapter().Relation.create_from()'>",
+    (
+        "try_or_compiler_error",
+    ): "<bound method ProviderContext.try_or_compiler_error of <dbt.context.providers.ModelContext object>>",
+    (
+        "write",
+    ): "<bound method ProviderContext.write of <dbt.context.providers.ModelContext object>>",
+}
+
 EXPECTED_MODEL_CONTEXT = {
     **COMMON_CONTEXT,
-    **expand_builtins(
-        {
-            "adapter": "<dbt.context.providers.RuntimeDatabaseWrapper object>",
-            "adapter_macro": "<bound method ProviderContext.adapter_macro of <dbt.context.providers.ModelContext object>>",
-            "column": "<MagicMock name='get_adapter().Column'>",
-            "compiled_code": "<MagicMock name='model_one.compiled_code'>",
-            "config": "<dbt.context.providers.RuntimeConfigObject object>",
-            "context_macro_stack": "<dbt.clients.jinja.MacroStack object>",
-            "database": "dbt",
-            "defer_relation": "<MagicMock name='get_adapter().Relation.create_from()'>",
-            "env_var": "<bound method ProviderContext.env_var of <dbt.context.providers.ModelContext object>>",
-            "execute": "True",
-            "graph": "<MagicMock name='mock.flat_graph'>",
-            "load_agate_table": "<bound method ProviderContext.load_agate_table of <dbt.context.providers.ModelContext object>>",
-            "load_result": "<bound method ProviderContext.load_result of <dbt.context.providers.ModelContext object>>",
-            "metric": "<dbt.context.providers.RuntimeMetricResolver object>",
-            "model": "<MagicMock name='model_one.to_dict()'>",
-            "post_hooks": "[]",
-            "pre_hooks": "[]",
-            "ref": "<dbt.context.providers.RuntimeRefResolver object>",
-            "render": "<bound method ProviderContext.render of <dbt.context.providers.ModelContext object>>",
-            "schema": "analytics",
-            "selected_resources": "[]",
-            "source": "<dbt.context.providers.RuntimeSourceResolver object>",
-            "sql": "<MagicMock name='model_one.compiled_code'>",
-            "sql_now": "<MagicMock name='get_adapter().date_function()'>",
-            "store_raw_result": "<bound method ProviderContext.store_raw_result of <dbt.context.providers.ModelContext object>>",
-            "store_result": "<bound method ProviderContext.store_result of <dbt.context.providers.ModelContext object>>",
-            "submit_python_job": "<bound method ProviderContext.submit_python_job of <dbt.context.providers.ModelContext object>>",
-            "this": "<MagicMock name='get_adapter().Relation.create_from()'>",
-            "try_or_compiler_error": "<bound method ProviderContext.try_or_compiler_error of <dbt.context.providers.ModelContext object>>",
-            "write": "<bound method ProviderContext.write of <dbt.context.providers.ModelContext object>>",
-        }
-    ),
+    **MODEL_BUILTINS,
+    **add_prefix(MODEL_BUILTINS, ("builtins",)),
     ("api", "Column"): "<MagicMock name='get_adapter().Column'>",
     ("api", "Relation"): "<dbt.context.providers.RelationProxy object>",
 }
