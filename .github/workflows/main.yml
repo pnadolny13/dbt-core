@@ -165,6 +165,18 @@ jobs:
         os: [ubuntu-20.04]
         split-group: ${{ fromJson(needs.integration-metadata.outputs.split-groups) }}
         include: ${{ fromJson(needs.integration-metadata.outputs.include) }}
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     env:
       TOXENV: integration
       DBT_INVOCATION_ENV: github-actions
@@ -189,14 +201,32 @@ jobs:
       - name: Set up postgres (linux)
         if: runner.os == 'Linux'
         uses: ./.github/actions/setup-postgres-linux
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: postgres
 
       - name: Set up postgres (macos)
         if: runner.os == 'macOS'
         uses: ./.github/actions/setup-postgres-macos
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: postgres
 
       - name: Set up postgres (windows)
         if: runner.os == 'Windows'
         uses: ./.github/actions/setup-postgres-windows
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: postgres
 
       - name: Install python tools
         run: |
