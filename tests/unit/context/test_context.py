@@ -14,7 +14,12 @@ from dbt.adapters import factory, postgres
 from dbt.clients.jinja import MacroStack
 from dbt.config.project import VarProvider
 from dbt.context import base, docs, macros, providers, query_header
-from dbt.context.base import Var
+from dbt.context.base import BaseContext, Var
+from dbt.context.configured import MacroResolvingContext
+from dbt.context.docs import DocsRuntimeContext
+from dbt.context.providers import MacroContext, TestContext, UnitTestContext
+from dbt.context.query_header import QueryHeaderContext
+from dbt.context.secret import SecretContext
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.nodes import (
     DependsOn,
@@ -347,6 +352,16 @@ def get_module_exports(module_name: str, filter_set: Optional[Set[str]] = None):
     }
 
 
+def get_leaf_subclasses(cls):
+    leaf_subclasses = set()
+    for subclass in cls.__subclasses__():
+        if not subclass.__subclasses__():
+            leaf_subclasses.add(subclass)
+        else:
+            leaf_subclasses.update(get_leaf_subclasses(subclass))
+    return frozenset(leaf_subclasses)
+
+
 PYTZ_COUNTRY_TIMEZONES = {
     ("modules", "pytz", "country_timezones", country_code): str(timezones)
     for country_code, timezones in pytz.country_timezones.items()
@@ -620,6 +635,18 @@ EXPECTED_DOCS_RUNTIME_CONTEXT[
     )
 ]["INVOCATION_COMMAND"] = "dbt unit/context/test_context.py::test_docs_runtime_context"
 
+EXPECTED_LEAF_CONTEXTS = frozenset(
+    {
+        SecretContext,
+        QueryHeaderContext,
+        MacroResolvingContext,
+        MacroContext,
+        UnitTestContext,
+        TestContext,
+        DocsRuntimeContext,
+    }
+)
+
 
 def model():
     return ModelNode(
@@ -772,6 +799,11 @@ def postgres_adapter(config_postgres, get_adapter):
     get_adapter.return_value = adapter
     yield adapter
     clear_plugin(postgres.Plugin)
+
+
+def test_leaf_contexts_set():
+    contexts = get_leaf_subclasses(BaseContext)
+    assert contexts == EXPECTED_LEAF_CONTEXTS
 
 
 def test_query_header_context(config_postgres, manifest_fx):
