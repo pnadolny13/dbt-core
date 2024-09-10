@@ -10,9 +10,9 @@ runs:
         # PostgreSQL server we're using. Since GitHub actions does not
         # support unsetting environment variables, the best we can do is to
         # clear their values in order to indicate they must not be used.
-        for name in "PGROOT" "PGDATA" "PGBIN" "PGUSER" "PGPASSWORD"; do
-          echo "$name=" >> $GITHUB_ENV
-        done
+        # for name in "PGROOT" "PGDATA" "PGBIN" "PGUSER" "PGPASSWORD"; do
+        #   echo "$name=" >> $GITHUB_ENV
+        # done
 
         choco install postgresql16 \
           --params "/Password:password" \
@@ -22,14 +22,11 @@ runs:
         PG_BINDIR=$("$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe" --bindir)
         PG_LIBDIR=$("$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe" --libdir)
 
-        echo "$PG_BINDIR" >> $GITHUB_PATH
-        echo "PQ_LIB_DIR=$PG_LIBDIR" >> $GITHUB_ENV
-
-        PGDATA="$RUNNER_TEMP/pgdata"
-        PWFILE="$RUNNER_TEMP/pwfile"
+        echo "$PG_BINDIR"
+        echo $PG_LIBDIR"
     - shell: pwsh
       run: |
-        $pgService = Get-Service -Name postgresql*
+        $pgService = Get-Service -Name postgresql16
         Set-Service -InputObject $pgService -Status running -StartupType automatic
         Start-Process -FilePath "$env:PGBIN\pg_isready" -Wait -PassThru
         $env:Path += ";$env:PGBIN"
