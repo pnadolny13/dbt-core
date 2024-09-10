@@ -1,7 +1,8 @@
+import importlib
 import os
 import re
 from argparse import Namespace
-from typing import Any, Dict, Mapping, Set
+from typing import Any, Dict, Mapping, Optional, Set
 from unittest import mock
 
 import pytest
@@ -322,8 +323,61 @@ EXPECTED_MODEL_FLAGS = {
 }
 
 
+def clean_value(value):
+    if isinstance(value, set):
+        return set(value)
+    elif isinstance(value, Namespace):
+        return value.__dict__
+    elif isinstance(value, Var):
+        return {k: v for k, v in value._merged.items()}
+    else:
+        value_str = str(value)
+        value_str = re.sub(r" at 0x[0-9a-fA-F]+>", ">", value_str)
+        value_str = re.sub(r" id='[0-9]+'>", ">", value_str)
+        return value_str
+
+
+def walk_dict(dictionary):
+    skip_paths = [
+        ["invocation_id"],
+        ["builtins", "invocation_id"],
+        ["dbt_version"],
+        ["builtins", "dbt_version"],
+    ]
+
+    stack = [(dictionary, [])]
+    visited = set()  # Set to keep track of visited dictionary objects
+
+    while stack:
+        current_dict, path = stack.pop(0)
+
+        if id(current_dict) in visited:
+            continue
+
+        visited.add(id(current_dict))
+
+        for key, value in current_dict.items():
+            current_path = path + [key]
+
+            if isinstance(value, Mapping):
+                stack.append((value, current_path))
+            else:
+                if current_path not in skip_paths:
+                    yield (tuple(current_path), clean_value(value))
+
+
 def add_prefix(path_dict, prefix):
     return {prefix + k: v for k, v in path_dict.items()}
+
+
+def get_module_exports(module_name: str, filter_set: Optional[Set[str]] = None):
+    module = importlib.import_module(module_name)
+    export_names = filter_set or module.__all__
+
+    return {
+        ("modules", module_name, export): clean_value(getattr(module, export))
+        for export in export_names
+    }
 
 
 COMMON_CONTEXT = {
@@ -345,8 +399,6 @@ COMMON_CONTEXT = {
     ("diff_of_two_dicts",): "<function BaseContext.diff_of_two_dicts>",
     ("local_md5",): "<function BaseContext.local_md5>",
     ("project_name",): "root",
-    ("macro_a",): "<dbt.clients.jinja.MacroGenerator object>",
-    ("macro_b",): "<dbt.clients.jinja.MacroGenerator object>",
     ("builtins", "var"): {},
     ("builtins", "return"): "<function BaseContext._return>",
     ("builtins", "fromjson"): "<function BaseContext.fromjson>",
@@ -404,7 +456,6 @@ COMMON_CONTEXT = {
     ("invocation_args_dict", "log_format"): "default",
     ("invocation_args_dict", "indirect_selection"): "eager",
     ("invocation_args_dict", "use_colors"): "True",
-    ("validation", "any"): "<function ProviderContext.validation.<locals>.validate_any>",
     ("exceptions", "warn"): "<function warn>",
     ("exceptions", "missing_config"): "<function missing_config>",
     ("exceptions", "missing_materialization"): "<function missing_materialization>",
@@ -432,8 +483,29 @@ COMMON_CONTEXT = {
         "exceptions",
         "warn_snapshot_timestamp_data_types",
     ): "<function warn_snapshot_timestamp_data_types>",
-    ("root", "macro_a"): "<dbt.clients.jinja.MacroGenerator object>",
-    ("root", "macro_b"): "<dbt.clients.jinja.MacroGenerator object>",
+    **get_module_exports("datetime", {"date", "datetime", "time", "timedelta", "tzinfo"}),
+    **get_module_exports("re"),
+    **get_module_exports(
+        "itertools",
+        {
+            "count",
+            "cycle",
+            "repeat",
+            "accumulate",
+            "chain",
+            "compress",
+            "islice",
+            "starmap",
+            "tee",
+            "zip_longest",
+            "product",
+            "permutations",
+            "combinations",
+            "combinations_with_replacement",
+        },
+    ),
+    ("invocation_args_dict", "warn_error_options", "include"): "[]",
+    ("invocation_args_dict", "warn_error_options", "exclude"): "[]",
     ("modules", "pytz", "timezone"): "<function timezone>",
     ("modules", "pytz", "utc"): "UTC",
     ("modules", "pytz", "AmbiguousTimeError"): "<class 'pytz.exceptions.AmbiguousTimeError'>",
@@ -446,62 +518,6 @@ COMMON_CONTEXT = {
     ("modules", "pytz", "common_timezones_set"): set(),
     ("modules", "pytz", "BaseTzInfo"): "<class 'pytz.tzinfo.BaseTzInfo'>",
     ("modules", "pytz", "FixedOffset"): "<function FixedOffset>",
-    ("modules", "datetime", "date"): "<class 'datetime.date'>",
-    ("modules", "datetime", "datetime"): "<class 'datetime.datetime'>",
-    ("modules", "datetime", "time"): "<class 'datetime.time'>",
-    ("modules", "datetime", "timedelta"): "<class 'datetime.timedelta'>",
-    ("modules", "datetime", "tzinfo"): "<class 'datetime.tzinfo'>",
-    ("modules", "re", "match"): "<function match>",
-    ("modules", "re", "fullmatch"): "<function fullmatch>",
-    ("modules", "re", "search"): "<function search>",
-    ("modules", "re", "sub"): "<function sub>",
-    ("modules", "re", "subn"): "<function subn>",
-    ("modules", "re", "split"): "<function split>",
-    ("modules", "re", "findall"): "<function findall>",
-    ("modules", "re", "finditer"): "<function finditer>",
-    ("modules", "re", "compile"): "<function compile>",
-    ("modules", "re", "purge"): "<function purge>",
-    ("modules", "re", "template"): "<function template>",
-    ("modules", "re", "escape"): "<function escape>",
-    ("modules", "re", "error"): "<class 're.error'>",
-    ("modules", "re", "Pattern"): "<class 're.Pattern'>",
-    ("modules", "re", "Match"): "<class 're.Match'>",
-    ("modules", "re", "A"): "re.ASCII",
-    ("modules", "re", "I"): "re.IGNORECASE",
-    ("modules", "re", "L"): "re.LOCALE",
-    ("modules", "re", "M"): "re.MULTILINE",
-    ("modules", "re", "S"): "re.DOTALL",
-    ("modules", "re", "X"): "re.VERBOSE",
-    ("modules", "re", "U"): "re.UNICODE",
-    ("modules", "re", "ASCII"): "re.ASCII",
-    ("modules", "re", "IGNORECASE"): "re.IGNORECASE",
-    ("modules", "re", "LOCALE"): "re.LOCALE",
-    ("modules", "re", "MULTILINE"): "re.MULTILINE",
-    ("modules", "re", "DOTALL"): "re.DOTALL",
-    ("modules", "re", "VERBOSE"): "re.VERBOSE",
-    ("modules", "re", "UNICODE"): "re.UNICODE",
-    ("modules", "re", "NOFLAG"): "re.NOFLAG",
-    ("modules", "re", "RegexFlag"): "<flag 'RegexFlag'>",
-    ("modules", "itertools", "count"): "<class 'itertools.count'>",
-    ("modules", "itertools", "cycle"): "<class 'itertools.cycle'>",
-    ("modules", "itertools", "repeat"): "<class 'itertools.repeat'>",
-    ("modules", "itertools", "accumulate"): "<class 'itertools.accumulate'>",
-    ("modules", "itertools", "chain"): "<class 'itertools.chain'>",
-    ("modules", "itertools", "compress"): "<class 'itertools.compress'>",
-    ("modules", "itertools", "islice"): "<class 'itertools.islice'>",
-    ("modules", "itertools", "starmap"): "<class 'itertools.starmap'>",
-    ("modules", "itertools", "tee"): "<built-in function tee>",
-    ("modules", "itertools", "zip_longest"): "<class 'itertools.zip_longest'>",
-    ("modules", "itertools", "product"): "<class 'itertools.product'>",
-    ("modules", "itertools", "permutations"): "<class 'itertools.permutations'>",
-    ("modules", "itertools", "combinations"): "<class 'itertools.combinations'>",
-    (
-        "modules",
-        "itertools",
-        "combinations_with_replacement",
-    ): "<class 'itertools.combinations_with_replacement'>",
-    ("invocation_args_dict", "warn_error_options", "include"): "[]",
-    ("invocation_args_dict", "warn_error_options", "exclude"): "[]",
     **PYTZ_COUNTRY_TIMEZONES,
     **PYTZ_COUNTRY_NAMES,
 }
@@ -559,12 +575,20 @@ MODEL_BUILTINS = {
     ): "<bound method ProviderContext.write of <dbt.context.providers.ModelContext object>>",
 }
 
+MODEL_MACROS = {
+    ("macro_a",): "<dbt.clients.jinja.MacroGenerator object>",
+    ("macro_b",): "<dbt.clients.jinja.MacroGenerator object>",
+}
+
 EXPECTED_MODEL_CONTEXT = {
     **COMMON_CONTEXT,
     **MODEL_BUILTINS,
     **add_prefix(MODEL_BUILTINS, ("builtins",)),
+    **MODEL_MACROS,
+    **add_prefix(MODEL_MACROS, ("root",)),
     ("api", "Column"): "<MagicMock name='get_adapter().Column'>",
     ("api", "Relation"): "<dbt.context.providers.RelationProxy object>",
+    ("validation", "any"): "<function ProviderContext.validation.<locals>.validate_any>",
 }
 
 EXPECTED_DOCS_RUNTIME_CONTEXT = {
@@ -771,48 +795,6 @@ def test_model_parse_context(config_postgres, manifest_fx, get_adapter, get_incl
         context_config=mock.MagicMock(),
     )
     assert_has_keys(REQUIRED_MODEL_KEYS, MAYBE_KEYS, ctx)
-
-
-def walk_dict(dictionary):
-    skip_paths = [
-        ["invocation_id"],
-        ["builtins", "invocation_id"],
-        ["dbt_version"],
-        ["builtins", "dbt_version"],
-    ]
-
-    stack = [(dictionary, [])]
-    visited = set()  # Set to keep track of visited dictionary objects
-
-    def clean_value(value):
-        if isinstance(value, set):
-            return set(value)
-        elif isinstance(value, Namespace):
-            return value.__dict__
-        elif isinstance(value, Var):
-            return {k: v for k, v in value._merged.items()}
-        else:
-            value_str = str(value)
-            value_str = re.sub(r" at 0x[0-9a-fA-F]+>", ">", value_str)
-            value_str = re.sub(r" id='[0-9]+'>", ">", value_str)
-            return value_str
-
-    while stack:
-        current_dict, path = stack.pop(0)
-
-        if id(current_dict) in visited:
-            continue
-
-        visited.add(id(current_dict))
-
-        for key, value in current_dict.items():
-            current_path = path + [key]
-
-            if isinstance(value, Mapping):
-                stack.append((value, current_path))
-            else:
-                if current_path not in skip_paths:
-                    yield (tuple(current_path), clean_value(value))
 
 
 def test_model_runtime_context(config_postgres, manifest_fx, get_adapter, get_include_paths):
