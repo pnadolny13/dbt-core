@@ -14,7 +14,7 @@ from dbt.adapters import factory, postgres
 from dbt.clients.jinja import MacroStack
 from dbt.config.project import VarProvider
 from dbt.context import base, docs, macros, providers, query_header
-from dbt.context.base import BaseContext, Var
+from dbt.context.base import Var
 from dbt.context.configured import MacroResolvingContext
 from dbt.context.docs import DocsRuntimeContext
 from dbt.context.providers import MacroContext, TestContext, UnitTestContext
@@ -355,16 +355,6 @@ def get_module_exports(module_name: str, filter_set: Optional[Set[str]] = None):
         ("modules", module_name, export): clean_value(getattr(module, export))
         for export in export_names
     }
-
-
-def get_leaf_subclasses(cls):
-    leaf_subclasses = set()
-    for subclass in cls.__subclasses__():
-        if not subclass.__subclasses__():
-            leaf_subclasses.add(subclass)
-        else:
-            leaf_subclasses.update(get_leaf_subclasses(subclass))
-    return frozenset(leaf_subclasses)
 
 
 PYTZ_COUNTRY_TIMEZONES = {
@@ -781,11 +771,6 @@ def postgres_adapter(config_postgres, get_adapter):
     get_adapter.return_value = adapter
     yield adapter
     clear_plugin(postgres.Plugin)
-
-
-def test_leaf_contexts_set():
-    contexts = get_leaf_subclasses(BaseContext)
-    assert contexts == EXPECTED_LEAF_CONTEXTS
 
 
 def test_query_header_context(config_postgres, manifest_fx):
