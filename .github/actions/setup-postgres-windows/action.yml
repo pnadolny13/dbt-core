@@ -28,6 +28,10 @@ runs:
         PGBIN="C:\Program Files\PostgreSQL\16\bin"
         PGROOT="C:\Program Files\PostgreSQL\16"
         PGDATA="C:\Program Files\PostgreSQL\16\data"
+
+        echo "PGBIN=$PGBIN" >> $GITHUB_ENV
+        echo "PGROOT=$PGROOT" >> $GITHUB_ENV
+        echo "PGDATA=$PGDATA" >> $GITHUB_ENV
     - shell: pwsh
       run: |
         $pgService = Get-Service -Name postgresql*
