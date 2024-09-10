@@ -3,37 +3,39 @@ description: "Set up postgres service on windows vm for dbt integration tests"
 runs:
   using: "composite"
   steps:
-    - shell: bash
-      run: |
-        # The Windows runner has some PostgreSQL environment variables set
-        # that may confuse users since they may be irrelevant to the
-        # PostgreSQL server we're using. Since GitHub actions does not
-        # support unsetting environment variables, the best we can do is to
-        # clear their values in order to indicate they must not be used.
-        # for name in "PGROOT" "PGDATA" "PGBIN" "PGUSER" "PGPASSWORD"; do
-        #   echo "$name=" >> $GITHUB_ENV
-        # done
-
-        choco install postgresql16 \
-          --params "/Password:password" \
-          --ia "--enable-components server,commandlinetools --extract-only 1" \
-          --no-progress
-
-        PG_BINDIR="C:\Program Files\PostgreSQL\16\bin"
-        PG_LIBDIR="C:\Program Files\PostgreSQL\16\lib"
-
-        echo "$PG_BINDIR" >> $GITHUB_PATH
-        echo "PQ_LIB_DIR=$PG_LIBDIR" >> $GITHUB_ENV
-
-        PGBIN="C:\Program Files\PostgreSQL\16\bin"
-        PGROOT="C:\Program Files\PostgreSQL\16"
-        PGDATA="C:\Program Files\PostgreSQL\16\data"
-
-        echo "PGBIN=$PGBIN" >> $GITHUB_ENV
-        echo "PGROOT=$PGROOT" >> $GITHUB_ENV
-        echo "PGDATA=$PGDATA" >> $GITHUB_ENV
     - shell: pwsh
       run: |
+        # Download postgres16
+        $url = "https://get.enterprisedb.com/postgresql/postgresql-16.1-1-windows-x64.exe"
+        $checkAccess = [System.Net.WebRequest]::Create($url)
+        $response = $checkAccess.GetResponse()
+        $installerUrl = $response.ResponseUri.OriginalString
+
+        # Invoke Install-Binary function
+        $installerArgs = @("--install_runtimes 0", "--superpassword root", "--enable_acledit 1", "--unattendedmodeui none", "--mode unattended")
+        Install-Binary `
+            -Url $url `
+            -InstallArgs $installerArgs `
+            -ExpectedSignature (Get-ToolsetContent).postgresql.signature
+
+        # Get Path to pg_ctl.exe
+        $pgPath = (Get-CimInstance Win32_Service -Filter "Name LIKE 'postgresql-%'").PathName
+
+        # Parse output of command above to obtain pure path
+        $pgBin = Split-Path -Path $pgPath.split('"')[1]
+        $pgRoot = Split-Path -Path $pgPath.split('"')[5]
+        $pgData = Join-Path $pgRoot "data"
+
+        # Validate PostgreSQL installation
+        $pgReadyPath = Join-Path $pgBin "pg_isready.exe"
+        $pgReady = Start-Process -FilePath $pgReadyPath -Wait -PassThru
+        $exitCode = $pgReady.ExitCode
+
+        if ($exitCode -ne 0) {
+            Write-Host -Object "PostgreSQL is not ready. Exitcode: $exitCode"
+            exit $exitCode
+        }
+
         $pgService = Get-Service -Name postgresql*
         Set-Service -InputObject $pgService -Status running -StartupType automatic
         Start-Process -FilePath "$env:PGBIN\pg_isready" -Wait -PassThru
