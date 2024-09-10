@@ -2,6 +2,8 @@ name: "Set up postgres (windows)"
 description: "Set up postgres service on windows vm for dbt integration tests"
 runs:
   using: "composite"
+  env:
+    PQ_LIB_DIR: 'C:\Program Files\PostgreSQL\16\lib'
   steps:
     - shell: pwsh
       run: |

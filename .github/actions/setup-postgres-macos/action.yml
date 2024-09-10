@@ -5,7 +5,6 @@ runs:
   steps:
     - shell: bash
       run: |
-        brew services start postgresql
         echo "Check PostgreSQL service is running"
         i=10
         COMMAND='pg_isready'
