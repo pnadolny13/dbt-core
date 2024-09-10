@@ -19,11 +19,8 @@ runs:
           --ia "--enable-components server,commandlinetools --extract-only 1" \
           --no-progress
 
-        PG_BINDIR=$("$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe" --bindir)
-        PG_LIBDIR=$("$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe" --libdir)
-
-        echo "$PG_BINDIR"
-        echo $PG_LIBDIR"
+        # PG_BINDIR=$("$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe" --bindir)
+        # PG_LIBDIR=$("$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe" --libdir)
     - shell: pwsh
       run: |
         $pgService = Get-Service -Name postgresql16
