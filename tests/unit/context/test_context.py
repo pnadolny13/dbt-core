@@ -292,7 +292,7 @@ PYTZ_COUNTRY_NAMES = {
     for country_code, country_name in pytz.country_names.items()
 }
 
-EXPECTED_MODEL_FLAGS = {
+COMMON_FLAGS = {
     "CACHE_SELECTED_ONLY": False,
     "LOG_CACHE_EVENTS": False,
     "FAIL_FAST": False,
@@ -330,6 +330,8 @@ def clean_value(value):
         return value.__dict__
     elif isinstance(value, Var):
         return {k: v for k, v in value._merged.items()}
+    elif isinstance(value, bool):
+        return value
     else:
         value_str = str(value)
         value_str = re.sub(r" at 0x[0-9a-fA-F]+>", ">", value_str)
@@ -380,43 +382,31 @@ def get_module_exports(module_name: str, filter_set: Optional[Set[str]] = None):
     }
 
 
-COMMON_CONTEXT = {
-    ("var",): {},
-    ("return",): "<function BaseContext._return>",
+COMMON_BUILTINS = {
+    ("diff_of_two_dicts",): "<function BaseContext.diff_of_two_dicts>",
+    ("flags",): COMMON_FLAGS,
     ("fromjson",): "<function BaseContext.fromjson>",
-    ("tojson",): "<function BaseContext.tojson>",
     ("fromyaml",): "<function BaseContext.fromyaml>",
-    ("toyaml",): "<function BaseContext.toyaml>",
+    ("local_md5",): "<function BaseContext.local_md5>",
+    ("log",): "<function BaseContext.log>",
+    ("print",): "<function BaseContext.print>",
+    ("project_name",): "root",
+    ("return",): "<function BaseContext._return>",
+    ("run_started_at",): "None",
     ("set",): "<function BaseContext._set>",
     ("set_strict",): "<function BaseContext.set_strict>",
+    ("thread_id",): "MainThread",
+    ("tojson",): "<function BaseContext.tojson>",
+    ("toyaml",): "<function BaseContext.toyaml>",
+    ("var",): {},
     ("zip",): "<function BaseContext._zip>",
     ("zip_strict",): "<function BaseContext.zip_strict>",
-    ("log",): "<function BaseContext.log>",
-    ("run_started_at",): "None",
-    ("thread_id",): "MainThread",
-    ("flags",): EXPECTED_MODEL_FLAGS,
-    ("print",): "<function BaseContext.print>",
-    ("diff_of_two_dicts",): "<function BaseContext.diff_of_two_dicts>",
-    ("local_md5",): "<function BaseContext.local_md5>",
-    ("project_name",): "root",
-    ("builtins", "var"): {},
-    ("builtins", "return"): "<function BaseContext._return>",
-    ("builtins", "fromjson"): "<function BaseContext.fromjson>",
-    ("builtins", "tojson"): "<function BaseContext.tojson>",
-    ("builtins", "fromyaml"): "<function BaseContext.fromyaml>",
-    ("builtins", "toyaml"): "<function BaseContext.toyaml>",
-    ("builtins", "set"): "<function BaseContext._set>",
-    ("builtins", "set_strict"): "<function BaseContext.set_strict>",
-    ("builtins", "zip"): "<function BaseContext._zip>",
-    ("builtins", "zip_strict"): "<function BaseContext.zip_strict>",
-    ("builtins", "log"): "<function BaseContext.log>",
-    ("builtins", "run_started_at"): "None",
-    ("builtins", "thread_id"): "MainThread",
-    ("builtins", "flags"): EXPECTED_MODEL_FLAGS,
-    ("builtins", "print"): "<function BaseContext.print>",
-    ("builtins", "diff_of_two_dicts"): "<function BaseContext.diff_of_two_dicts>",
-    ("builtins", "local_md5"): "<function BaseContext.local_md5>",
-    ("builtins", "project_name"): "root",
+}
+
+
+COMMON_CONTEXT = {
+    **COMMON_BUILTINS,
+    **add_prefix(COMMON_BUILTINS, ("builtins",)),
     ("target", "host"): "localhost",
     ("target", "port"): "1",
     ("target", "user"): "test",
@@ -439,23 +429,23 @@ COMMON_CONTEXT = {
     ("target", "target_name"): "test",
     ("target", "profile_name"): "test",
     ("invocation_args_dict", "profile_dir"): "/dev/null",
-    ("invocation_args_dict", "cache_selected_only"): "False",
-    ("invocation_args_dict", "send_anonymous_usage_stats"): "True",
+    ("invocation_args_dict", "cache_selected_only"): False,
+    ("invocation_args_dict", "send_anonymous_usage_stats"): True,
     ("invocation_args_dict", "log_path"): "logs",
-    ("invocation_args_dict", "introspect"): "True",
-    ("invocation_args_dict", "quiet"): "False",
-    ("invocation_args_dict", "partial_parse"): "True",
-    ("invocation_args_dict", "write_json"): "True",
-    ("invocation_args_dict", "static_parser"): "True",
+    ("invocation_args_dict", "introspect"): True,
+    ("invocation_args_dict", "quiet"): False,
+    ("invocation_args_dict", "partial_parse"): True,
+    ("invocation_args_dict", "write_json"): True,
+    ("invocation_args_dict", "static_parser"): True,
     (
         "invocation_args_dict",
         "invocation_command",
     ): "dbt unit/context/test_context.py::test_model_runtime_context",
     ("invocation_args_dict", "printer_width"): "80",
-    ("invocation_args_dict", "version_check"): "True",
+    ("invocation_args_dict", "version_check"): True,
     ("invocation_args_dict", "log_format"): "default",
     ("invocation_args_dict", "indirect_selection"): "eager",
-    ("invocation_args_dict", "use_colors"): "True",
+    ("invocation_args_dict", "use_colors"): True,
     ("exceptions", "warn"): "<function warn>",
     ("exceptions", "missing_config"): "<function missing_config>",
     ("exceptions", "missing_materialization"): "<function missing_materialization>",
@@ -536,7 +526,7 @@ MODEL_BUILTINS = {
     (
         "env_var",
     ): "<bound method ProviderContext.env_var of <dbt.context.providers.ModelContext object>>",
-    ("execute",): "True",
+    ("execute",): True,
     ("graph",): "<MagicMock name='mock.flat_graph'>",
     (
         "load_agate_table",
