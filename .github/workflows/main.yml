@@ -190,18 +190,25 @@ jobs:
         uses: ikalnytskyi/action-setup-postgres@v6
         with:
           postgres-version: "16"
+        id: postgres
 
       - name: Set up postgres (linux)
         if: runner.os == 'Linux'
         uses: ./.github/actions/setup-postgres-linux
+        env:
+          CONNECTION_STR: ${{ steps.postgres.outputs.connection-uri }}
 
       - name: Set up postgres (macos)
         if: runner.os == 'macOS'
         uses: ./.github/actions/setup-postgres-macos
+        env:
+          CONNECTION_STR: ${{ steps.postgres.outputs.connection-uri }}
 
       - name: Set up postgres (windows)
         if: runner.os == 'Windows'
         uses: ./.github/actions/setup-postgres-windows
+        env:
+          CONNECTION_STR: ${{ steps.postgres.outputs.connection-uri }}
 
       - name: Install python tools
         run: |
