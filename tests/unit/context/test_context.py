@@ -2,6 +2,7 @@ import importlib
 import os
 import re
 from argparse import Namespace
+from copy import deepcopy
 from types import NoneType
 from typing import Any, Dict, Mapping, Optional, Set
 from unittest import mock
@@ -364,7 +365,6 @@ COMMON_FLAGS_INVOCATION_ARGS = {
     "SEND_ANONYMOUS_USAGE_STATS": True,
     "INDIRECT_SELECTION": "eager",
     "INTROSPECT": True,
-    "INVOCATION_COMMAND": "dbt unit/context/test_context.py::test_model_runtime_context",
     "PARTIAL_PARSE": True,
     "PRINTER_WIDTH": 80,
     "QUIET": False,
@@ -438,40 +438,6 @@ COMMON_CONTEXT = {
     ("target", "name"): "test",
     ("target", "target_name"): "test",
     ("target", "profile_name"): "test",
-    **add_prefix(
-        {(k.lower(),): v for k, v in COMMON_FLAGS_INVOCATION_ARGS.items()},
-        ("invocation_args_dict",),
-    ),
-    ("invocation_args_dict", "profile_dir"): "/dev/null",
-    ("invocation_args_dict", "warn_error_options", "include"): "[]",
-    ("invocation_args_dict", "warn_error_options", "exclude"): "[]",
-    ("exceptions", "warn"): "<function warn>",
-    ("exceptions", "missing_config"): "<function missing_config>",
-    ("exceptions", "missing_materialization"): "<function missing_materialization>",
-    ("exceptions", "missing_relation"): "<function missing_relation>",
-    ("exceptions", "raise_ambiguous_alias"): "<function raise_ambiguous_alias>",
-    ("exceptions", "raise_ambiguous_catalog_match"): "<function raise_ambiguous_catalog_match>",
-    ("exceptions", "raise_cache_inconsistent"): "<function raise_cache_inconsistent>",
-    ("exceptions", "raise_dataclass_not_dict"): "<function raise_dataclass_not_dict>",
-    ("exceptions", "raise_compiler_error"): "<function raise_compiler_error>",
-    ("exceptions", "raise_database_error"): "<function raise_database_error>",
-    ("exceptions", "raise_dep_not_found"): "<function raise_dep_not_found>",
-    ("exceptions", "raise_dependency_error"): "<function raise_dependency_error>",
-    ("exceptions", "raise_duplicate_patch_name"): "<function raise_duplicate_patch_name>",
-    ("exceptions", "raise_duplicate_resource_name"): "<function raise_duplicate_resource_name>",
-    (
-        "exceptions",
-        "raise_invalid_property_yml_version",
-    ): "<function raise_invalid_property_yml_version>",
-    ("exceptions", "raise_not_implemented"): "<function raise_not_implemented>",
-    ("exceptions", "relation_wrong_type"): "<function relation_wrong_type>",
-    ("exceptions", "raise_contract_error"): "<function raise_contract_error>",
-    ("exceptions", "column_type_missing"): "<function column_type_missing>",
-    ("exceptions", "raise_fail_fast_error"): "<function raise_fail_fast_error>",
-    (
-        "exceptions",
-        "warn_snapshot_timestamp_data_types",
-    ): "<function warn_snapshot_timestamp_data_types>",
     **get_module_exports("datetime", {"date", "datetime", "time", "timedelta", "tzinfo"}),
     **get_module_exports("re"),
     **get_module_exports(
@@ -562,25 +528,98 @@ MODEL_BUILTINS = {
     ): "<bound method ProviderContext.write of <dbt.context.providers.ModelContext object>>",
 }
 
+MODEL_EXCEPTIONS = {
+    ("exceptions", "warn"): "<function warn>",
+    ("exceptions", "missing_config"): "<function missing_config>",
+    ("exceptions", "missing_materialization"): "<function missing_materialization>",
+    ("exceptions", "missing_relation"): "<function missing_relation>",
+    ("exceptions", "raise_ambiguous_alias"): "<function raise_ambiguous_alias>",
+    ("exceptions", "raise_ambiguous_catalog_match"): "<function raise_ambiguous_catalog_match>",
+    ("exceptions", "raise_cache_inconsistent"): "<function raise_cache_inconsistent>",
+    ("exceptions", "raise_dataclass_not_dict"): "<function raise_dataclass_not_dict>",
+    ("exceptions", "raise_compiler_error"): "<function raise_compiler_error>",
+    ("exceptions", "raise_database_error"): "<function raise_database_error>",
+    ("exceptions", "raise_dep_not_found"): "<function raise_dep_not_found>",
+    ("exceptions", "raise_dependency_error"): "<function raise_dependency_error>",
+    ("exceptions", "raise_duplicate_patch_name"): "<function raise_duplicate_patch_name>",
+    ("exceptions", "raise_duplicate_resource_name"): "<function raise_duplicate_resource_name>",
+    (
+        "exceptions",
+        "raise_invalid_property_yml_version",
+    ): "<function raise_invalid_property_yml_version>",
+    ("exceptions", "raise_not_implemented"): "<function raise_not_implemented>",
+    ("exceptions", "relation_wrong_type"): "<function relation_wrong_type>",
+    ("exceptions", "raise_contract_error"): "<function raise_contract_error>",
+    ("exceptions", "column_type_missing"): "<function column_type_missing>",
+    ("exceptions", "raise_fail_fast_error"): "<function raise_fail_fast_error>",
+    (
+        "exceptions",
+        "warn_snapshot_timestamp_data_types",
+    ): "<function warn_snapshot_timestamp_data_types>",
+}
+
 MODEL_MACROS = {
     ("macro_a",): "<dbt.clients.jinja.MacroGenerator object>",
     ("macro_b",): "<dbt.clients.jinja.MacroGenerator object>",
 }
 
-EXPECTED_MODEL_CONTEXT = {
-    **COMMON_CONTEXT,
-    **MODEL_BUILTINS,
-    **add_prefix(MODEL_BUILTINS, ("builtins",)),
-    **MODEL_MACROS,
-    **add_prefix(MODEL_MACROS, ("root",)),
-    ("api", "Column"): "<MagicMock name='get_adapter().Column'>",
-    ("api", "Relation"): "<dbt.context.providers.RelationProxy object>",
-    ("validation", "any"): "<function ProviderContext.validation.<locals>.validate_any>",
+EXPECTED_MODEL_RUNTIME_CONTEXT = deepcopy(
+    {
+        **COMMON_CONTEXT,
+        **MODEL_BUILTINS,
+        **add_prefix(MODEL_BUILTINS, ("builtins",)),
+        **MODEL_MACROS,
+        **add_prefix(MODEL_MACROS, ("root",)),
+        **add_prefix(
+            {(k.lower(),): v for k, v in COMMON_FLAGS_INVOCATION_ARGS.items()},
+            ("invocation_args_dict",),
+        ),
+        ("invocation_args_dict", "profile_dir"): "/dev/null",
+        ("invocation_args_dict", "warn_error_options", "include"): "[]",
+        ("invocation_args_dict", "warn_error_options", "exclude"): "[]",
+        **MODEL_EXCEPTIONS,
+        ("api", "Column"): "<MagicMock name='get_adapter().Column'>",
+        ("api", "Relation"): "<dbt.context.providers.RelationProxy object>",
+        ("validation", "any"): "<function ProviderContext.validation.<locals>.validate_any>",
+    }
+)
+EXPECTED_MODEL_RUNTIME_CONTEXT[("flags",)][
+    "INVOCATION_COMMAND"
+] = "dbt unit/context/test_context.py::test_model_runtime_context"
+EXPECTED_MODEL_RUNTIME_CONTEXT[
+    (
+        "builtins",
+        "flags",
+    )
+]["INVOCATION_COMMAND"] = "dbt unit/context/test_context.py::test_model_runtime_context"
+EXPECTED_MODEL_RUNTIME_CONTEXT[("invocation_args_dict", "invocation_command")] = (
+    "dbt unit/context/test_context.py::test_model_runtime_context"
+)
+
+DOCS_BUILTINS = {
+    ("doc",): "<bound method DocsRuntimeContext.doc of "
+    "<dbt.context.docs.DocsRuntimeContext object>>",
+    ("env_var",): "<bound method SchemaYamlContext.env_var of "
+    "<dbt.context.docs.DocsRuntimeContext object>>",
 }
 
-EXPECTED_DOCS_RUNTIME_CONTEXT = {
-    **COMMON_CONTEXT,
-}
+EXPECTED_DOCS_RUNTIME_CONTEXT = deepcopy(
+    {
+        **COMMON_CONTEXT,
+        **DOCS_BUILTINS,
+        **add_prefix(DOCS_BUILTINS, ("builtins",)),
+    }
+)
+
+EXPECTED_DOCS_RUNTIME_CONTEXT[("flags",)][
+    "INVOCATION_COMMAND"
+] = "dbt unit/context/test_context.py::test_docs_runtime_context"
+EXPECTED_DOCS_RUNTIME_CONTEXT[
+    (
+        "builtins",
+        "flags",
+    )
+]["INVOCATION_COMMAND"] = "dbt unit/context/test_context.py::test_docs_runtime_context"
 
 
 def model():
@@ -791,7 +830,7 @@ def test_model_runtime_context(config_postgres, manifest_fx, get_adapter, get_in
         manifest=manifest_fx,
     )
     actual_model_context = {k: v for (k, v) in walk_dict(ctx)}
-    assert actual_model_context == EXPECTED_MODEL_CONTEXT
+    assert actual_model_context == EXPECTED_MODEL_RUNTIME_CONTEXT
 
 
 def test_docs_runtime_context(config_postgres):
