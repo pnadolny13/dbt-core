@@ -16,5 +16,4 @@ runs:
         sudo systemctl start postgresql
         sudo systemctl enable postgresql
         pg_isready
-        psql --version
         sudo -u postgres bash ${{ github.action_path }}/setup_db.sh
