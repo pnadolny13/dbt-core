@@ -316,6 +316,10 @@ def walk_dict(dictionary):
         ["dbt_version"],
         ["builtins", "dbt_version"],
         ["invocation_args_dict", "invocation_command"],
+        ["run_started_at"],
+        ["builtins", "run_started_at"],
+        ["selected_resources"],
+        ["builtins", "selected_resources"],
     ]
 
     stack = [(dictionary, [])]
