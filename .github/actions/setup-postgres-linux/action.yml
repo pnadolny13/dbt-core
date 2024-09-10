@@ -11,9 +11,9 @@ runs:
         curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc|sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
         sudo apt update -y
         sudo apt install postgresql-16
-        sudo systemctl | grep postgres
-        sudo systemctl start postgresql
-        sudo systemctl enable postgresql
+        sudo apt-get -y install postgresql postgresql-contrib
+        sudo systemctl start postgresql@16
+        sudo systemctl enable postgresql@16
         pg_isready
         psql --version
         sudo -u postgres bash ${{ github.action_path }}/setup_db.sh
