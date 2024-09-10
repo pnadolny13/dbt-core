@@ -2,6 +2,7 @@ import importlib
 import os
 import re
 from argparse import Namespace
+from types import NoneType
 from typing import Any, Dict, Mapping, Optional, Set
 from unittest import mock
 
@@ -282,46 +283,6 @@ PROJECT_DATA = {
     "config-version": 2,
 }
 
-PYTZ_COUNTRY_TIMEZONES = {
-    ("modules", "pytz", "country_timezones", country_code): str(timezones)
-    for country_code, timezones in pytz.country_timezones.items()
-}
-
-PYTZ_COUNTRY_NAMES = {
-    ("modules", "pytz", "country_names", country_code): country_name
-    for country_code, country_name in pytz.country_names.items()
-}
-
-COMMON_FLAGS = {
-    "CACHE_SELECTED_ONLY": False,
-    "LOG_CACHE_EVENTS": False,
-    "FAIL_FAST": False,
-    "SEND_ANONYMOUS_USAGE_STATS": True,
-    "LOG_PATH": "logs",
-    "DEBUG": False,
-    "WARN_ERROR": None,
-    "INTROSPECT": True,
-    "WARN_ERROR_OPTIONS": WarnErrorOptions(include=[], exclude=[]),
-    "QUIET": False,
-    "PARTIAL_PARSE": True,
-    "WRITE_JSON": True,
-    "STATIC_PARSER": True,
-    "USE_EXPERIMENTAL_PARSER": False,
-    "INVOCATION_COMMAND": "dbt unit/context/test_context.py::test_model_runtime_context",
-    "PRINTER_WIDTH": 80,
-    "VERSION_CHECK": True,
-    "LOG_FORMAT": "default",
-    "NO_PRINT": None,
-    "PROFILES_DIR": None,
-    "TARGET_PATH": None,
-    "EMPTY": None,
-    "INDIRECT_SELECTION": "eager",
-    "USE_COLORS": True,
-    "FULL_REFRESH": False,
-    "STORE_FAILURES": False,
-    "WHICH": "run",
-}
-
 
 def clean_value(value):
     if isinstance(value, set):
@@ -331,6 +292,10 @@ def clean_value(value):
     elif isinstance(value, Var):
         return {k: v for k, v in value._merged.items()}
     elif isinstance(value, bool):
+        return value
+    elif isinstance(value, NoneType):
+        return None
+    elif isinstance(value, int):
         return value
     else:
         value_str = str(value)
@@ -382,6 +347,51 @@ def get_module_exports(module_name: str, filter_set: Optional[Set[str]] = None):
     }
 
 
+PYTZ_COUNTRY_TIMEZONES = {
+    ("modules", "pytz", "country_timezones", country_code): str(timezones)
+    for country_code, timezones in pytz.country_timezones.items()
+}
+
+PYTZ_COUNTRY_NAMES = {
+    ("modules", "pytz", "country_names", country_code): country_name
+    for country_code, country_name in pytz.country_names.items()
+}
+
+COMMON_FLAGS_INVOCATION_ARGS = {
+    "CACHE_SELECTED_ONLY": False,
+    "LOG_FORMAT": "default",
+    "LOG_PATH": "logs",
+    "SEND_ANONYMOUS_USAGE_STATS": True,
+    "INDIRECT_SELECTION": "eager",
+    "INTROSPECT": True,
+    "INVOCATION_COMMAND": "dbt unit/context/test_context.py::test_model_runtime_context",
+    "PARTIAL_PARSE": True,
+    "PRINTER_WIDTH": 80,
+    "QUIET": False,
+    "STATIC_PARSER": True,
+    "USE_COLORS": True,
+    "VERSION_CHECK": True,
+    "WRITE_JSON": True,
+}
+
+COMMON_FLAGS = {
+    **COMMON_FLAGS_INVOCATION_ARGS,
+    "LOG_CACHE_EVENTS": False,
+    "FAIL_FAST": False,
+    "DEBUG": False,
+    "WARN_ERROR": None,
+    "WARN_ERROR_OPTIONS": WarnErrorOptions(include=[], exclude=[]),
+    "USE_EXPERIMENTAL_PARSER": False,
+    "NO_PRINT": None,
+    "PROFILES_DIR": None,
+    "TARGET_PATH": None,
+    "EMPTY": None,
+    "FULL_REFRESH": False,
+    "STORE_FAILURES": False,
+    "WHICH": "run",
+}
+
+
 COMMON_BUILTINS = {
     ("diff_of_two_dicts",): "<function BaseContext.diff_of_two_dicts>",
     ("flags",): COMMON_FLAGS,
@@ -392,7 +402,7 @@ COMMON_BUILTINS = {
     ("print",): "<function BaseContext.print>",
     ("project_name",): "root",
     ("return",): "<function BaseContext._return>",
-    ("run_started_at",): "None",
+    ("run_started_at",): None,
     ("set",): "<function BaseContext._set>",
     ("set_strict",): "<function BaseContext.set_strict>",
     ("thread_id",): "MainThread",
@@ -408,44 +418,33 @@ COMMON_CONTEXT = {
     **COMMON_BUILTINS,
     **add_prefix(COMMON_BUILTINS, ("builtins",)),
     ("target", "host"): "localhost",
-    ("target", "port"): "1",
+    ("target", "port"): 1,
     ("target", "user"): "test",
     ("target", "database"): "test",
     ("target", "schema"): "analytics",
-    ("target", "connect_timeout"): "10",
-    ("target", "role"): "None",
-    ("target", "search_path"): "None",
-    ("target", "keepalives_idle"): "0",
-    ("target", "sslmode"): "None",
-    ("target", "sslcert"): "None",
-    ("target", "sslkey"): "None",
-    ("target", "sslrootcert"): "None",
+    ("target", "connect_timeout"): 10,
+    ("target", "role"): None,
+    ("target", "search_path"): None,
+    ("target", "keepalives_idle"): 0,
+    ("target", "sslmode"): None,
+    ("target", "sslcert"): None,
+    ("target", "sslkey"): None,
+    ("target", "sslrootcert"): None,
     ("target", "application_name"): "dbt",
-    ("target", "retries"): "1",
+    ("target", "retries"): 1,
     ("target", "dbname"): "test",
     ("target", "type"): "postgres",
-    ("target", "threads"): "1",
+    ("target", "threads"): 1,
     ("target", "name"): "test",
     ("target", "target_name"): "test",
     ("target", "profile_name"): "test",
+    **add_prefix(
+        {(k.lower(),): v for k, v in COMMON_FLAGS_INVOCATION_ARGS.items()},
+        ("invocation_args_dict",),
+    ),
     ("invocation_args_dict", "profile_dir"): "/dev/null",
-    ("invocation_args_dict", "cache_selected_only"): False,
-    ("invocation_args_dict", "send_anonymous_usage_stats"): True,
-    ("invocation_args_dict", "log_path"): "logs",
-    ("invocation_args_dict", "introspect"): True,
-    ("invocation_args_dict", "quiet"): False,
-    ("invocation_args_dict", "partial_parse"): True,
-    ("invocation_args_dict", "write_json"): True,
-    ("invocation_args_dict", "static_parser"): True,
-    (
-        "invocation_args_dict",
-        "invocation_command",
-    ): "dbt unit/context/test_context.py::test_model_runtime_context",
-    ("invocation_args_dict", "printer_width"): "80",
-    ("invocation_args_dict", "version_check"): True,
-    ("invocation_args_dict", "log_format"): "default",
-    ("invocation_args_dict", "indirect_selection"): "eager",
-    ("invocation_args_dict", "use_colors"): True,
+    ("invocation_args_dict", "warn_error_options", "include"): "[]",
+    ("invocation_args_dict", "warn_error_options", "exclude"): "[]",
     ("exceptions", "warn"): "<function warn>",
     ("exceptions", "missing_config"): "<function missing_config>",
     ("exceptions", "missing_materialization"): "<function missing_materialization>",
@@ -494,8 +493,6 @@ COMMON_CONTEXT = {
             "combinations_with_replacement",
         },
     ),
-    ("invocation_args_dict", "warn_error_options", "include"): "[]",
-    ("invocation_args_dict", "warn_error_options", "exclude"): "[]",
     ("modules", "pytz", "timezone"): "<function timezone>",
     ("modules", "pytz", "utc"): "UTC",
     ("modules", "pytz", "AmbiguousTimeError"): "<class 'pytz.exceptions.AmbiguousTimeError'>",
