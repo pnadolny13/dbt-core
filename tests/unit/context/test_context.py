@@ -315,6 +315,7 @@ def walk_dict(dictionary):
         ["builtins", "invocation_id"],
         ["dbt_version"],
         ["builtins", "dbt_version"],
+        ["invocation_args_dict", "invocation_command"],
     ]
 
     stack = [(dictionary, [])]
@@ -335,7 +336,11 @@ def walk_dict(dictionary):
                 stack.append((value, current_path))
             else:
                 if current_path not in skip_paths:
-                    yield (tuple(current_path), clean_value(value))
+                    cv = clean_value(value)
+                    if current_path == ["flags"]:
+                        del cv["INVOCATION_COMMAND"]
+
+                    yield (tuple(current_path), cv)
 
 
 def add_prefix(path_dict, prefix):
@@ -427,8 +432,7 @@ COMMON_BUILTINS = {
     ("zip_strict",): "<function BaseContext.zip_strict>",
 }
 
-
-COMMON_CONTEXT = {
+COMMON_RUNTIME_CONTEXT = {
     **COMMON_BUILTINS,
     **add_prefix(COMMON_BUILTINS, ("builtins",)),
     ("target", "host"): "localhost",
@@ -579,7 +583,7 @@ MODEL_MACROS = {
 
 EXPECTED_MODEL_RUNTIME_CONTEXT = deepcopy(
     {
-        **COMMON_CONTEXT,
+        **COMMON_RUNTIME_CONTEXT,
         **MODEL_BUILTINS,
         **add_prefix(MODEL_BUILTINS, ("builtins",)),
         **MODEL_MACROS,
@@ -597,18 +601,6 @@ EXPECTED_MODEL_RUNTIME_CONTEXT = deepcopy(
         ("validation", "any"): "<function ProviderContext.validation.<locals>.validate_any>",
     }
 )
-EXPECTED_MODEL_RUNTIME_CONTEXT[("flags",)][
-    "INVOCATION_COMMAND"
-] = "dbt unit/context/test_context.py::test_model_runtime_context"
-EXPECTED_MODEL_RUNTIME_CONTEXT[
-    (
-        "builtins",
-        "flags",
-    )
-]["INVOCATION_COMMAND"] = "dbt unit/context/test_context.py::test_model_runtime_context"
-EXPECTED_MODEL_RUNTIME_CONTEXT[("invocation_args_dict", "invocation_command")] = (
-    "dbt unit/context/test_context.py::test_model_runtime_context"
-)
 
 DOCS_BUILTINS = {
     ("doc",): "<bound method DocsRuntimeContext.doc of "
@@ -619,21 +611,11 @@ DOCS_BUILTINS = {
 
 EXPECTED_DOCS_RUNTIME_CONTEXT = deepcopy(
     {
-        **COMMON_CONTEXT,
+        **COMMON_RUNTIME_CONTEXT,
         **DOCS_BUILTINS,
         **add_prefix(DOCS_BUILTINS, ("builtins",)),
     }
 )
-
-EXPECTED_DOCS_RUNTIME_CONTEXT[("flags",)][
-    "INVOCATION_COMMAND"
-] = "dbt unit/context/test_context.py::test_docs_runtime_context"
-EXPECTED_DOCS_RUNTIME_CONTEXT[
-    (
-        "builtins",
-        "flags",
-    )
-]["INVOCATION_COMMAND"] = "dbt unit/context/test_context.py::test_docs_runtime_context"
 
 EXPECTED_LEAF_CONTEXTS = frozenset(
     {
