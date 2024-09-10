@@ -3,7 +3,6 @@ import os
 import re
 from argparse import Namespace
 from copy import deepcopy
-from types import NoneType
 from typing import Any, Dict, Mapping, Optional, Set
 from unittest import mock
 
@@ -294,7 +293,7 @@ def clean_value(value):
         return {k: v for k, v in value._merged.items()}
     elif isinstance(value, bool):
         return value
-    elif isinstance(value, NoneType):
+    elif value is None:
         return None
     elif isinstance(value, int):
         return value
@@ -820,7 +819,8 @@ def test_model_parse_context(config_postgres, manifest_fx, get_adapter, get_incl
         manifest=manifest_fx,
         context_config=mock.MagicMock(),
     )
-    assert_has_keys(REQUIRED_MODEL_KEYS, MAYBE_KEYS, ctx)
+    actual_model_context = {k: v for (k, v) in walk_dict(ctx)}
+    assert actual_model_context == EXPECTED_MODEL_RUNTIME_CONTEXT
 
 
 def test_model_runtime_context(config_postgres, manifest_fx, get_adapter, get_include_paths):
