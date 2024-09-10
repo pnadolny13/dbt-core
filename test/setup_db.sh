@@ -5,6 +5,8 @@ env | grep '^PG'
 # If you want to run this script for your own postgresql (run with
 # docker-compose) it will look like this:
 # PGHOST=127.0.0.1 PGUSER=root PGPASSWORD=password PGDATABASE=postgres \
+PG_CONNECTION_URI="${CONNECTION_URI}"
+export PG_CONNECTION_URI
 PGUSER="${PGUSER:-postgres}"
 export PGUSER
 PGPORT="${PGPORT:-5432}"
@@ -15,11 +17,11 @@ function connect_circle() {
 	# try to handle circleci/docker oddness
 	let rc=1
 	while [[ $rc -eq 1 ]]; do
-		nc -z ${PGHOST} ${PGPORT}
+		nc -z ${PG_CONNECTION_URI}
 		let rc=$?
 	done
 	if [[ $rc -ne 0 ]]; then
-		echo "Fatal: Could not connect to $PGHOST"
+		echo "Fatal: Could not connect to $PG_CONNECTION_URI"
 		exit 1
 	fi
 }
@@ -30,7 +32,7 @@ if [[ -n $CIRCLECI ]]; then
 fi
 
 for i in {1..10}; do
-	if pg_isready -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" ; then
+	if pg_isready --d "${PG_CONNECTION_URI}"; then
 		break
 	fi
 
