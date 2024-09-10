@@ -19,8 +19,8 @@ runs:
           --ia "--enable-components server,commandlinetools --extract-only 1" \
           --no-progress
 
-        PG_BINDIR=$("C:\Program Files\PostgreSQL\16\bin\pg_config.exe" --bindir)
-        PG_LIBDIR=$("C:\Program Files\PostgreSQL\16\bin\pg_config.exe" --libdir)
+        PG_BINDIR="C:\Program Files\PostgreSQL\16\bin"
+        PG_LIBDIR="C:\Program Files\PostgreSQL\16\lib"
 
         echo "$PG_BINDIR" >> $GITHUB_PATH
         echo "PQ_LIB_DIR=$PG_LIBDIR" >> $GITHUB_ENV
