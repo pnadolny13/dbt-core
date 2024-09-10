@@ -225,6 +225,7 @@ jobs:
           command: tox -- --ddtrace
         env:
           PYTEST_ADDOPTS: ${{ format('--splits {0} --group {1}', env.PYTHON_INTEGRATION_TEST_WORKERS, matrix.split-group) }}
+          CONNECTION_STR: ${{ steps.postgres.outputs.connection-uri }}
 
       - name: Get current date
         if: always()
