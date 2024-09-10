@@ -7,8 +7,8 @@ runs:
       run: |
         choco install postgresql16 --params "/Password:password" --ia "--enable-components server,commandlinetools --extract-only 1" --no-progress
 
-        $Env:PG_BINDIR = $("$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe" --bindir)
-        $Env:PG_LIBDIR = $("$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe" --libdir)
+        Invoke-Expression "`"$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe"` --bindir"
+        Invoke-Expression "`"$PROGRAMFILES/PostgreSQL/16/bin/pg_config.exe"` --libdir"
 
         $pgService = Get-Service -Name postgresql*
         Set-Service -InputObject $pgService -Status running -StartupType automatic
