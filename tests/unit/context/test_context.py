@@ -15,11 +15,6 @@ from dbt.clients.jinja import MacroStack
 from dbt.config.project import VarProvider
 from dbt.context import base, docs, macros, providers, query_header
 from dbt.context.base import Var
-from dbt.context.configured import MacroResolvingContext
-from dbt.context.docs import DocsRuntimeContext
-from dbt.context.providers import MacroContext, TestContext, UnitTestContext
-from dbt.context.query_header import QueryHeaderContext
-from dbt.context.secret import SecretContext
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.nodes import (
     DependsOn,
@@ -538,6 +533,10 @@ MODEL_BUILTINS = {
     ): "<bound method ProviderContext.write of <dbt.context.providers.ModelContext object>>",
 }
 
+MODEL_RUNTIME_BUILTINS = {
+    **MODEL_BUILTINS,
+}
+
 MODEL_EXCEPTIONS = {
     ("exceptions", "warn"): "<function warn>",
     ("exceptions", "missing_config"): "<function missing_config>",
@@ -576,8 +575,29 @@ MODEL_MACROS = {
 EXPECTED_MODEL_RUNTIME_CONTEXT = deepcopy(
     {
         **COMMON_RUNTIME_CONTEXT,
-        **MODEL_BUILTINS,
-        **add_prefix(MODEL_BUILTINS, ("builtins",)),
+        **MODEL_RUNTIME_BUILTINS,
+        **add_prefix(MODEL_RUNTIME_BUILTINS, ("builtins",)),
+        **MODEL_MACROS,
+        **add_prefix(MODEL_MACROS, ("root",)),
+        **add_prefix(
+            {(k.lower(),): v for k, v in COMMON_FLAGS_INVOCATION_ARGS.items()},
+            ("invocation_args_dict",),
+        ),
+        ("invocation_args_dict", "profile_dir"): "/dev/null",
+        ("invocation_args_dict", "warn_error_options", "include"): "[]",
+        ("invocation_args_dict", "warn_error_options", "exclude"): "[]",
+        **MODEL_EXCEPTIONS,
+        ("api", "Column"): "<MagicMock name='get_adapter().Column'>",
+        ("api", "Relation"): "<dbt.context.providers.RelationProxy object>",
+        ("validation", "any"): "<function ProviderContext.validation.<locals>.validate_any>",
+    }
+)
+
+EXPECTED_MODEL_RUNTIME_CONTEXT = deepcopy(
+    {
+        **COMMON_RUNTIME_CONTEXT,
+        **MODEL_RUNTIME_BUILTINS,
+        **add_prefix(MODEL_RUNTIME_BUILTINS, ("builtins",)),
         **MODEL_MACROS,
         **add_prefix(MODEL_MACROS, ("root",)),
         **add_prefix(
@@ -606,18 +626,6 @@ EXPECTED_DOCS_RUNTIME_CONTEXT = deepcopy(
         **COMMON_RUNTIME_CONTEXT,
         **DOCS_BUILTINS,
         **add_prefix(DOCS_BUILTINS, ("builtins",)),
-    }
-)
-
-EXPECTED_LEAF_CONTEXTS = frozenset(
-    {
-        SecretContext,
-        QueryHeaderContext,
-        MacroResolvingContext,
-        MacroContext,
-        UnitTestContext,
-        TestContext,
-        DocsRuntimeContext,
     }
 )
 
