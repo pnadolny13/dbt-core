@@ -293,7 +293,8 @@ class ContextConfig:
 
     def add_config_call(self, opts: Dict[str, Any]) -> None:
         dct = self._config_call_dict
-        self._add_config_call(dct, opts)
+        # Try skipping _add_config_call entirely
+        self._config_call_dict = opts
 
     @classmethod
     def _add_config_call(cls, config_call_dict, opts: Dict[str, Any]) -> None:
