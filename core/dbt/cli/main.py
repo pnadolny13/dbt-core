@@ -635,8 +635,13 @@ def clone(ctx, **kwargs):
 @global_flags
 @click.argument("macro")
 @p.args
+@p.exclude
+@p.exclude_resource_type
 @p.profiles_dir
 @p.project_dir
+@p.resource_type
+@p.select
+@p.selector
 @p.target_path
 @p.threads
 @p.vars
