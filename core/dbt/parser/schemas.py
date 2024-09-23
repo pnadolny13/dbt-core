@@ -286,7 +286,8 @@ class SchemaParser(SimpleParser[YamlBlock, ModelNode]):
                 # Reuse the logic of SnapshotParser as far as possible to create
                 # a new node we can add to the manifest.
                 parser = SnapshotParser(self.project, self.manifest, self.root_project)
-                fqn = [self.project.project_name, "snapshots", snapshot["name"]]
+                fqn = parser.get_fqn_prefix(block.path.relative_path)
+                fqn.append(snapshot["name"])
                 snapshot_node = parser._create_parsetime_node(
                     block,
                     self.get_compiled_path(block),
