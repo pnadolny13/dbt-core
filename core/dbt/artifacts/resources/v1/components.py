@@ -194,6 +194,7 @@ class ParsedResource(ParsedResourceMandatory):
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=lambda: time.time())
     config_call_dict: Dict[str, Any] = field(default_factory=dict)
+    unrendered_config_call_dict: Dict[str, Any] = field(default_factory=dict)
     relation_name: Optional[str] = None
     raw_code: str = ""
     vars: Dict[str, Any] = field(default_factory=dict)
@@ -202,6 +203,8 @@ class ParsedResource(ParsedResourceMandatory):
         dct = super().__post_serialize__(dct, context)
         if context and context.get("artifact") and "config_call_dict" in dct:
             del dct["config_call_dict"]
+        if context and context.get("artifact") and "unrendered_config_call_dict" in dct:
+            del dct["unrendered_config_call_dict"]
         return dct
 
 

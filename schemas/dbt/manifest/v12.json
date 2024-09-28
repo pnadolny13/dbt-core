@@ -259,6 +259,15 @@
                     ],
                     "default": null
                   },
+                  "batch_size": {
+                    "default": null
+                  },
+                  "lookback": {
+                    "default": 0
+                  },
+                  "begin": {
+                    "default": null
+                  },
                   "persist_docs": {
                     "type": "object",
                     "propertyNames": {
@@ -433,6 +442,9 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "event_time": {
+                    "default": null
                   },
                   "delimiter": {
                     "type": "string",
@@ -915,6 +927,15 @@
                                 ],
                                 "default": null
                               },
+                              "batch_size": {
+                                "default": null
+                              },
+                              "lookback": {
+                                "default": 0
+                              },
+                              "begin": {
+                                "default": null
+                              },
                               "persist_docs": {
                                 "type": "object",
                                 "propertyNames": {
@@ -1089,6 +1110,9 @@
                                   }
                                 },
                                 "additionalProperties": false
+                              },
+                              "event_time": {
+                                "default": null
                               }
                             },
                             "additionalProperties": true
@@ -1289,6 +1313,15 @@
                     ],
                     "default": null
                   },
+                  "batch_size": {
+                    "default": null
+                  },
+                  "lookback": {
+                    "default": 0
+                  },
+                  "begin": {
+                    "default": null
+                  },
                   "persist_docs": {
                     "type": "object",
                     "propertyNames": {
@@ -1463,6 +1496,9 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "event_time": {
+                    "default": null
                   }
                 },
                 "additionalProperties": true
@@ -2722,6 +2758,15 @@
                     ],
                     "default": null
                   },
+                  "batch_size": {
+                    "default": null
+                  },
+                  "lookback": {
+                    "default": 0
+                  },
+                  "begin": {
+                    "default": null
+                  },
                   "persist_docs": {
                     "type": "object",
                     "propertyNames": {
@@ -2896,6 +2941,9 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "event_time": {
+                    "default": null
                   }
                 },
                 "additionalProperties": true
@@ -3512,6 +3560,15 @@
                     ],
                     "default": null
                   },
+                  "batch_size": {
+                    "default": null
+                  },
+                  "lookback": {
+                    "default": 0
+                  },
+                  "begin": {
+                    "default": null
+                  },
                   "persist_docs": {
                     "type": "object",
                     "propertyNames": {
@@ -3686,6 +3743,9 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "event_time": {
+                    "default": null
                   },
                   "access": {
                     "enum": [
@@ -4429,6 +4489,15 @@
                                 ],
                                 "default": null
                               },
+                              "batch_size": {
+                                "default": null
+                              },
+                              "lookback": {
+                                "default": 0
+                              },
+                              "begin": {
+                                "default": null
+                              },
                               "persist_docs": {
                                 "type": "object",
                                 "propertyNames": {
@@ -4603,6 +4672,9 @@
                                   }
                                 },
                                 "additionalProperties": false
+                              },
+                              "event_time": {
+                                "default": null
                               }
                             },
                             "additionalProperties": true
@@ -4648,6 +4720,33 @@
                     "properties": {
                       "standard_granularity_column": {
                         "type": "string"
+                      },
+                      "custom_granularities": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "title": "CustomGranularity",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "column_name": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "name"
+                          ]
+                        }
                       }
                     },
                     "additionalProperties": false,
@@ -4830,6 +4929,15 @@
                     ],
                     "default": null
                   },
+                  "batch_size": {
+                    "default": null
+                  },
+                  "lookback": {
+                    "default": 0
+                  },
+                  "begin": {
+                    "default": null
+                  },
                   "persist_docs": {
                     "type": "object",
                     "propertyNames": {
@@ -5004,6 +5112,9 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "event_time": {
+                    "default": null
                   }
                 },
                 "additionalProperties": true
@@ -6324,6 +6435,15 @@
                     ],
                     "default": null
                   },
+                  "batch_size": {
+                    "default": null
+                  },
+                  "lookback": {
+                    "default": 0
+                  },
+                  "begin": {
+                    "default": null
+                  },
                   "persist_docs": {
                     "type": "object",
                     "propertyNames": {
@@ -6493,6 +6613,9 @@
                     },
                     "additionalProperties": false
                   },
+                  "event_time": {
+                    "default": null
+                  },
                   "strategy": {
                     "anyOf": [
                       {
@@ -6553,6 +6676,57 @@
                       }
                     ],
                     "default": null
+                  },
+                  "snapshot_meta_column_names": {
+                    "type": "object",
+                    "title": "SnapshotMetaColumnNames",
+                    "properties": {
+                      "dbt_valid_to": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "dbt_valid_from": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "dbt_scd_id": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "dbt_updated_at": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": true
@@ -7165,6 +7339,15 @@
                                 ],
                                 "default": null
                               },
+                              "batch_size": {
+                                "default": null
+                              },
+                              "lookback": {
+                                "default": 0
+                              },
+                              "begin": {
+                                "default": null
+                              },
                               "persist_docs": {
                                 "type": "object",
                                 "propertyNames": {
@@ -7339,6 +7522,9 @@
                                   }
                                 },
                                 "additionalProperties": false
+                              },
+                              "event_time": {
+                                "default": null
                               }
                             },
                             "additionalProperties": true
@@ -7921,6 +8107,9 @@
               "enabled": {
                 "type": "boolean",
                 "default": true
+              },
+              "event_time": {
+                "default": null
               }
             },
             "additionalProperties": true
@@ -9934,6 +10123,15 @@
                           ],
                           "default": null
                         },
+                        "batch_size": {
+                          "default": null
+                        },
+                        "lookback": {
+                          "default": 0
+                        },
+                        "begin": {
+                          "default": null
+                        },
                         "persist_docs": {
                           "type": "object",
                           "propertyNames": {
@@ -10108,6 +10306,9 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "event_time": {
+                          "default": null
                         },
                         "delimiter": {
                           "type": "string",
@@ -10590,6 +10791,15 @@
                                       ],
                                       "default": null
                                     },
+                                    "batch_size": {
+                                      "default": null
+                                    },
+                                    "lookback": {
+                                      "default": 0
+                                    },
+                                    "begin": {
+                                      "default": null
+                                    },
                                     "persist_docs": {
                                       "type": "object",
                                       "propertyNames": {
@@ -10764,6 +10974,9 @@
                                         }
                                       },
                                       "additionalProperties": false
+                                    },
+                                    "event_time": {
+                                      "default": null
                                     }
                                   },
                                   "additionalProperties": true
@@ -10964,6 +11177,15 @@
                           ],
                           "default": null
                         },
+                        "batch_size": {
+                          "default": null
+                        },
+                        "lookback": {
+                          "default": 0
+                        },
+                        "begin": {
+                          "default": null
+                        },
                         "persist_docs": {
                           "type": "object",
                           "propertyNames": {
@@ -11138,6 +11360,9 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "event_time": {
+                          "default": null
                         }
                       },
                       "additionalProperties": true
@@ -12397,6 +12622,15 @@
                           ],
                           "default": null
                         },
+                        "batch_size": {
+                          "default": null
+                        },
+                        "lookback": {
+                          "default": 0
+                        },
+                        "begin": {
+                          "default": null
+                        },
                         "persist_docs": {
                           "type": "object",
                           "propertyNames": {
@@ -12571,6 +12805,9 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "event_time": {
+                          "default": null
                         }
                       },
                       "additionalProperties": true
@@ -13187,6 +13424,15 @@
                           ],
                           "default": null
                         },
+                        "batch_size": {
+                          "default": null
+                        },
+                        "lookback": {
+                          "default": 0
+                        },
+                        "begin": {
+                          "default": null
+                        },
                         "persist_docs": {
                           "type": "object",
                           "propertyNames": {
@@ -13361,6 +13607,9 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "event_time": {
+                          "default": null
                         },
                         "access": {
                           "enum": [
@@ -14104,6 +14353,15 @@
                                       ],
                                       "default": null
                                     },
+                                    "batch_size": {
+                                      "default": null
+                                    },
+                                    "lookback": {
+                                      "default": 0
+                                    },
+                                    "begin": {
+                                      "default": null
+                                    },
                                     "persist_docs": {
                                       "type": "object",
                                       "propertyNames": {
@@ -14278,6 +14536,9 @@
                                         }
                                       },
                                       "additionalProperties": false
+                                    },
+                                    "event_time": {
+                                      "default": null
                                     }
                                   },
                                   "additionalProperties": true
@@ -14323,6 +14584,33 @@
                           "properties": {
                             "standard_granularity_column": {
                               "type": "string"
+                            },
+                            "custom_granularities": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "title": "CustomGranularity",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "column_name": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "default": null
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "required": [
+                                  "name"
+                                ]
+                              }
                             }
                           },
                           "additionalProperties": false,
@@ -14505,6 +14793,15 @@
                           ],
                           "default": null
                         },
+                        "batch_size": {
+                          "default": null
+                        },
+                        "lookback": {
+                          "default": 0
+                        },
+                        "begin": {
+                          "default": null
+                        },
                         "persist_docs": {
                           "type": "object",
                           "propertyNames": {
@@ -14679,6 +14976,9 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "event_time": {
+                          "default": null
                         }
                       },
                       "additionalProperties": true
@@ -15999,6 +16299,15 @@
                           ],
                           "default": null
                         },
+                        "batch_size": {
+                          "default": null
+                        },
+                        "lookback": {
+                          "default": 0
+                        },
+                        "begin": {
+                          "default": null
+                        },
                         "persist_docs": {
                           "type": "object",
                           "propertyNames": {
@@ -16168,6 +16477,9 @@
                           },
                           "additionalProperties": false
                         },
+                        "event_time": {
+                          "default": null
+                        },
                         "strategy": {
                           "anyOf": [
                             {
@@ -16228,6 +16540,57 @@
                             }
                           ],
                           "default": null
+                        },
+                        "snapshot_meta_column_names": {
+                          "type": "object",
+                          "title": "SnapshotMetaColumnNames",
+                          "properties": {
+                            "dbt_valid_to": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null
+                            },
+                            "dbt_valid_from": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null
+                            },
+                            "dbt_scd_id": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null
+                            },
+                            "dbt_updated_at": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null
+                            }
+                          },
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": true
@@ -16840,6 +17203,15 @@
                                       ],
                                       "default": null
                                     },
+                                    "batch_size": {
+                                      "default": null
+                                    },
+                                    "lookback": {
+                                      "default": 0
+                                    },
+                                    "begin": {
+                                      "default": null
+                                    },
                                     "persist_docs": {
                                       "type": "object",
                                       "propertyNames": {
@@ -17014,6 +17386,9 @@
                                         }
                                       },
                                       "additionalProperties": false
+                                    },
+                                    "event_time": {
+                                      "default": null
                                     }
                                   },
                                   "additionalProperties": true
@@ -17587,6 +17962,9 @@
                         "enabled": {
                           "type": "boolean",
                           "default": true
+                        },
+                        "event_time": {
+                          "default": null
                         }
                       },
                       "additionalProperties": true
@@ -19284,6 +19662,15 @@
                             "required": [
                               "export_as"
                             ]
+                          },
+                          "unrendered_config": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "propertyNames": {
+                              "type": "string"
+                            }
                           }
                         },
                         "additionalProperties": false,
@@ -20809,6 +21196,15 @@
                   "required": [
                     "export_as"
                   ]
+                },
+                "unrendered_config": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "propertyNames": {
+                    "type": "string"
+                  }
                 }
               },
               "additionalProperties": false,

@@ -24,6 +24,7 @@ from dbt_semantic_interfaces.implementations.semantic_manifest import (
 from dbt_semantic_interfaces.implementations.semantic_model import PydanticSemanticModel
 from dbt_semantic_interfaces.implementations.time_spine import (
     PydanticTimeSpine,
+    PydanticTimeSpineCustomGranularityColumn,
     PydanticTimeSpinePrimaryColumn,
 )
 from dbt_semantic_interfaces.implementations.time_spine_table_configuration import (
@@ -105,6 +106,12 @@ class SemanticManifest:
                     name=time_spine.standard_granularity_column,
                     time_granularity=standard_granularity_column.granularity,
                 ),
+                custom_granularities=[
+                    PydanticTimeSpineCustomGranularityColumn(
+                        name=custom_granularity.name, column_name=custom_granularity.column_name
+                    )
+                    for custom_granularity in time_spine.custom_granularities
+                ],
             )
             pydantic_time_spines.append(pydantic_time_spine)
             if (
@@ -155,7 +162,7 @@ class SemanticManifest:
                 raise ParsingError(
                     "The semantic layer requires a time spine model with granularity DAY or smaller in the project, "
                     "but none was found. Guidance on creating this model can be found on our docs site "
-                    "(https://docs.getdbt.com/docs/build/metricflow-time-spine)."  # TODO: update docs link when available!
+                    "(https://docs.getdbt.com/docs/build/metricflow-time-spine)."
                 )
 
             # For backward compatibility: if legacy time spine exists, include it in the manifest.

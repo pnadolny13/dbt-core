@@ -5,7 +5,7 @@ from concurrent.futures import as_completed
 from datetime import datetime
 from multiprocessing.dummy import Pool as ThreadPool
 from pathlib import Path
-from typing import AbstractSet, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import AbstractSet, Dict, Iterable, List, Optional, Set, Tuple, Type, Union
 
 import dbt.exceptions
 import dbt.tracking
@@ -66,7 +66,7 @@ class GraphRunnableMode(StrEnum):
 
 
 class GraphRunnableTask(ConfiguredTask):
-    MARK_DEPENDENT_ERRORS_STATUSES = [NodeStatus.Error]
+    MARK_DEPENDENT_ERRORS_STATUSES = [NodeStatus.Error, NodeStatus.PartialSuccess]
 
     def __init__(self, args: Flags, config: RuntimeConfig, manifest: Manifest) -> None:
         super().__init__(args, config, manifest)
@@ -181,13 +181,13 @@ class GraphRunnableTask(ConfiguredTask):
 
         self.num_nodes = len([n for n in self._flattened_nodes if not n.is_ephemeral_model])
 
-    def raise_on_first_error(self):
+    def raise_on_first_error(self) -> bool:
         return False
 
-    def get_runner_type(self, node):
+    def get_runner_type(self, node) -> Optional[Type[BaseRunner]]:
         raise NotImplementedError("Not Implemented")
 
-    def result_path(self):
+    def result_path(self) -> str:
         return os.path.join(self.config.project_target_path, RESULT_FILE_NAME)
 
     def get_runner(self, node) -> BaseRunner:
@@ -204,6 +204,10 @@ class GraphRunnableTask(ConfiguredTask):
             num_nodes = self.num_nodes
 
         cls = self.get_runner_type(node)
+
+        if cls is None:
+            raise DbtInternalError("Could not find runner type for node.")
+
         return cls(self.config, adapter, node, run_count, num_nodes)
 
     def call_runner(self, runner: BaseRunner) -> RunResult:
@@ -247,6 +251,7 @@ class GraphRunnableTask(ConfiguredTask):
                         adapter_response={},
                         message=msg,
                         failures=None,
+                        batch_results=None,
                         node=runner.node,
                     )
 
@@ -256,7 +261,10 @@ class GraphRunnableTask(ConfiguredTask):
 
         fail_fast = get_flags().FAIL_FAST
 
-        if result.status in (NodeStatus.Error, NodeStatus.Fail) and fail_fast:
+        if (
+            result.status in (NodeStatus.Error, NodeStatus.Fail, NodeStatus.PartialSuccess)
+            and fail_fast
+        ):
             self._raise_next_tick = FailFastError(
                 msg="Failing early due to test failure or runtime error",
                 result=result,
@@ -334,7 +342,7 @@ class GraphRunnableTask(ConfiguredTask):
         args = [runner]
         self._submit(pool, args, callback)
 
-    def _handle_result(self, result: RunResult):
+    def _handle_result(self, result: RunResult) -> None:
         """Mark the result as completed, insert the `CompileResultNode` into
         the manifest, and mark any descendants (potentially with a 'cause' if
         the result was an ephemeral model) as skipped.
@@ -479,7 +487,7 @@ class GraphRunnableTask(ConfiguredTask):
             self.defer_to_manifest()
             self.populate_adapter_cache(adapter)
 
-    def after_run(self, adapter, results):
+    def after_run(self, adapter, results) -> None:
         pass
 
     def print_results_line(self, node_results, elapsed):
@@ -659,7 +667,7 @@ class GraphRunnableTask(ConfiguredTask):
             args=dbt.utils.args_to_dict(self.args),
         )
 
-    def task_end_messages(self, results):
+    def task_end_messages(self, results) -> None:
         print_run_end_messages(results)
 
     def _get_previous_state(self) -> Optional[Manifest]:

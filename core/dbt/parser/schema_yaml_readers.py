@@ -615,7 +615,7 @@ class SemanticModelParser(YamlReader):
     ) -> None:
         unparsed_metric = UnparsedMetric(
             name=measure.name,
-            label=measure.name,
+            label=measure.label or measure.name,
             type="simple",
             type_params=UnparsedMetricTypeParams(measure=measure.name, expr=measure.name),
             description=measure.description or f"Metric created from measure {measure.name}",
@@ -781,7 +781,9 @@ class SavedQueryParser(YamlReader):
         self, unparsed: UnparsedExport, saved_query_config: SavedQueryConfig
     ) -> Export:
         return Export(
-            name=unparsed.name, config=self._get_export_config(unparsed.config, saved_query_config)
+            name=unparsed.name,
+            config=self._get_export_config(unparsed.config, saved_query_config),
+            unrendered_config=unparsed.config,
         )
 
     def _get_query_params(self, unparsed: UnparsedQueryParams) -> QueryParams:

@@ -21,6 +21,7 @@ from dbt.contracts.graph.nodes import (
     InjectedCTE,
     ManifestNode,
     ManifestSQLNode,
+    ModelNode,
     SeedNode,
     UnitTestDefinition,
     UnitTestNode,
@@ -374,7 +375,7 @@ class Compiler:
 
             _extend_prepended_ctes(prepended_ctes, new_prepended_ctes)
 
-            new_cte_name = self.add_ephemeral_prefix(cte_model.name)
+            new_cte_name = self.add_ephemeral_prefix(cte_model.identifier)
             rendered_sql = cte_model._pre_injected_sql or cte_model.compiled_code
             sql = f" {new_cte_name} as (\n{rendered_sql}\n)"
 
@@ -441,7 +442,7 @@ class Compiler:
             node.relation_name = relation_name
 
         # Compile 'ref' and 'source' expressions in foreign key constraints
-        if node.resource_type == NodeType.Model:
+        if isinstance(node, ModelNode):
             for constraint in node.all_constraints:
                 if constraint.type == ConstraintType.foreign_key and constraint.to:
                     constraint.to = self._compile_relation_for_foreign_key_constraint_to(
@@ -520,7 +521,9 @@ class Compiler:
             linker.write_graph(graph_path, manifest)
 
     # writes the "compiled_code" into the target/compiled directory
-    def _write_node(self, node: ManifestSQLNode) -> ManifestSQLNode:
+    def _write_node(
+        self, node: ManifestSQLNode, split_suffix: Optional[str] = None
+    ) -> ManifestSQLNode:
         if not node.extra_ctes_injected or node.resource_type in (
             NodeType.Snapshot,
             NodeType.Seed,
@@ -529,7 +532,9 @@ class Compiler:
         fire_event(WritingInjectedSQLForNode(node_info=get_node_info()))
 
         if node.compiled_code:
-            node.compiled_path = node.get_target_write_path(self.config.target_path, "compiled")
+            node.compiled_path = node.get_target_write_path(
+                self.config.target_path, "compiled", split_suffix
+            )
             node.write_node(self.config.project_root, node.compiled_path, node.compiled_code)
         return node
 
@@ -539,6 +544,7 @@ class Compiler:
         manifest: Manifest,
         extra_context: Optional[Dict[str, Any]] = None,
         write: bool = True,
+        split_suffix: Optional[str] = None,
     ) -> ManifestSQLNode:
         """This is the main entry point into this code. It's called by
         CompileRunner.compile, GenericRPCRunner.compile, and
@@ -546,6 +552,8 @@ class Compiler:
         the node's raw_code into compiled_code, and then calls the
         recursive method to "prepend" the ctes.
         """
+        # REVIEW: UnitTestDefinition shouldn't be possible here because of the
+        # type of node, and it is likewise an invalid return type.
         if isinstance(node, UnitTestDefinition):
             return node
 
@@ -559,7 +567,7 @@ class Compiler:
 
         node, _ = self._recursively_prepend_ctes(node, manifest, extra_context)
         if write:
-            self._write_node(node)
+            self._write_node(node, split_suffix=split_suffix)
         return node
 
 

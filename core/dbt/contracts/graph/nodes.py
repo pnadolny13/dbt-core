@@ -2,6 +2,7 @@ import hashlib
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import (
     Any,
     Dict,
@@ -18,7 +19,6 @@ from typing import (
 
 from mashumaro.types import SerializableType
 
-from dbt import deprecations
 from dbt.adapters.base import ConstraintSupport
 from dbt.adapters.factory import get_adapter_constraint_support
 from dbt.artifacts.resources import Analysis as AnalysisResource
@@ -60,6 +60,7 @@ from dbt.artifacts.resources import SourceDefinition as SourceDefinitionResource
 from dbt.artifacts.resources import SqlOperation as SqlOperationResource
 from dbt.artifacts.resources import TimeSpine
 from dbt.artifacts.resources import UnitTestDefinition as UnitTestDefinitionResource
+from dbt.artifacts.schemas.batch_results import BatchType
 from dbt.contracts.graph.model_config import UnitTestNodeConfig
 from dbt.contracts.graph.node_args import ModelNodeArgs
 from dbt.contracts.graph.unparsed import (
@@ -244,7 +245,9 @@ class NodeInfoMixin:
 
 @dataclass
 class ParsedNode(ParsedResource, NodeInfoMixin, ParsedNodeMandatory, SerializableType):
-    def get_target_write_path(self, target_path: str, subdirectory: str):
+    def get_target_write_path(
+        self, target_path: str, subdirectory: str, split_suffix: Optional[str] = None
+    ):
         # This is called for both the "compiled" subdirectory of "target" and the "run" subdirectory
         if os.path.basename(self.path) == os.path.basename(self.original_file_path):
             # One-to-one relationship of nodes to files.
@@ -252,6 +255,15 @@ class ParsedNode(ParsedResource, NodeInfoMixin, ParsedNodeMandatory, Serializabl
         else:
             #  Many-to-one relationship of nodes to files.
             path = os.path.join(self.original_file_path, self.path)
+
+        if split_suffix:
+            pathlib_path = Path(path)
+            path = str(
+                pathlib_path.parent
+                / pathlib_path.stem
+                / (pathlib_path.stem + f"_{split_suffix}" + pathlib_path.suffix)
+            )
+
         target_write_path = os.path.join(target_path, subdirectory, self.package_name, path)
         return target_write_path
 
@@ -435,6 +447,8 @@ class HookNode(HookNodeResource, CompiledNode):
 
 @dataclass
 class ModelNode(ModelResource, CompiledNode):
+    batches: Optional[List[BatchType]] = None
+
     @classmethod
     def resource_class(cls) -> Type[ModelResource]:
         return ModelResource
@@ -1152,12 +1166,6 @@ class UnpatchedSourceDefinition(BaseNode):
                 "Invalid test config: cannot have both 'tests' and 'data_tests' defined"
             )
         if self.tests:
-            if is_root_project:
-                deprecations.warn(
-                    "project-test-config",
-                    deprecated_path="tests",
-                    exp_path="data_tests",
-                )
             self.data_tests.extend(self.tests)
             self.tests.clear()
 
@@ -1168,12 +1176,6 @@ class UnpatchedSourceDefinition(BaseNode):
                     "Invalid test config: cannot have both 'tests' and 'data_tests' defined"
                 )
             if column.tests:
-                if is_root_project:
-                    deprecations.warn(
-                        "project-test-config",
-                        deprecated_path="tests",
-                        exp_path="data_tests",
-                    )
                 column.data_tests.extend(column.tests)
                 column.tests.clear()
 
@@ -1479,6 +1481,13 @@ class Group(GroupResource, BaseNode):
     def resource_class(cls) -> Type[GroupResource]:
         return GroupResource
 
+    def to_logging_dict(self) -> Dict[str, Union[str, Dict[str, str]]]:
+        return {
+            "name": self.name,
+            "package_name": self.package_name,
+            "owner": self.owner.to_dict(omit_none=True),
+        }
+
 
 # ====================================
 # SemanticModel node
@@ -1584,13 +1593,12 @@ class SavedQuery(NodeInfoMixin, GraphNode, SavedQueryResource):
 
         # exports should be in the same order, so we zip them for easy iteration
         for old_export, new_export in zip(old.exports, self.exports):
-            if not (
-                old_export.name == new_export.name
-                and old_export.config.export_as == new_export.config.export_as
-                and old_export.config.schema_name == new_export.config.schema_name
-                and old_export.config.alias == new_export.config.alias
-            ):
+            if not (old_export.name == new_export.name):
                 return False
+            keys = ["export_as", "schema", "alias"]
+            for key in keys:
+                if old_export.unrendered_config.get(key) != new_export.unrendered_config.get(key):
+                    return False
 
         return True
 
@@ -1647,6 +1655,11 @@ class ParsedMacroPatch(ParsedPatch):
     arguments: List[MacroArgument] = field(default_factory=list)
 
 
+@dataclass
+class ParsedSingularTestPatch(ParsedPatch):
+    pass
+
+
 # ====================================
 # Node unions/categories
 # ====================================
@@ -1696,6 +1709,7 @@ Resource = Union[
 
 TestNode = Union[SingularTestNode, GenericTestNode]
 
+SemanticManifestNode = Union[SavedQuery, SemanticModel, Metric]
 
 RESOURCE_CLASS_TO_NODE_CLASS: Dict[Type[BaseResource], Type[BaseNode]] = {
     node_class.resource_class(): node_class
