@@ -1,3 +1,4 @@
+from argparse import Namespace
 import pickle
 import re
 from dataclasses import replace
@@ -23,6 +24,12 @@ from tests.unit.utils import (
     replace_config,
 )
 
+
+@pytest.fixture
+def args_for_flags() -> Namespace:
+    return Namespace(
+        state_modified_compare_vars=False
+    )
 
 def norm_whitespace(string):
     _RE_COMBINE_WHITESPACE = re.compile(r"\s+")

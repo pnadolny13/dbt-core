@@ -412,17 +412,11 @@ class YamlReader(metaclass=ABCMeta):
 
             if self.schema_yaml_vars.env_vars:
                 self.schema_parser.manifest.env_vars.update(self.schema_yaml_vars.env_vars)
-                schema_file = self.yaml.file
-                assert isinstance(schema_file, SchemaSourceFile)
                 for env_var in self.schema_yaml_vars.env_vars.keys():
                     schema_file.add_env_var(env_var, self.key, entry["name"])
-                for var in self.schema_yaml_vars.env_vars.keys():
-                    schema_file.add_env_var(var, self.key, entry["name"])
                 self.schema_yaml_vars.env_vars = {}
 
             if self.schema_yaml_vars.vars:
-                schema_file = self.yaml.file
-                assert isinstance(schema_file, SchemaSourceFile)
                 schema_file.add_vars(self.schema_yaml_vars.vars, self.key, entry["name"])
                 self.schema_yaml_vars.vars = {}
 
