@@ -488,7 +488,6 @@ class TestMicrobatchMultipleRetries(BaseMicrobatchTest):
             "microbatch_model.sql": microbatch_model_failing_incremental_partition_sql,
         }
 
-    @mock.patch.dict(os.environ, {"DBT_EXPERIMENTAL_MICROBATCH": "True"})
     def test_run_with_event_time(self, project):
         # run all partitions from start - 2 expected rows in output, one failed
         with patch_microbatch_end_time("2020-01-03 13:57:00"):
