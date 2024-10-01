@@ -3,7 +3,6 @@ from datetime import datetime
 
 import pytest
 import pytz
-from dbt.artifacts.resources.types import NodeType
 
 from dbt.tests.util import (
     check_relations_equal,
