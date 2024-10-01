@@ -74,12 +74,6 @@ snapshots_check_col_noconfig__snapshot_sql = """
 def snapshot_setup(project, num_snapshot_models=1):
     path = os.path.join(project.test_data_dir, "seed_pg.sql")
     project.run_sql_file(path)
-    manifest = run_dbt(["parse"])
-    for node in manifest.nodes.values():
-        if node.resource_type != NodeType.Snapshot:
-            continue
-        print(f"--- {node.unique_id} => {node.config.unique_key}, {type(node.config.unique_key).__name__}")
-
     results = run_dbt(["snapshot"])
     assert len(results) == num_snapshot_models
 
