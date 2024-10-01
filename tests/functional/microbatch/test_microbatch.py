@@ -120,6 +120,14 @@ class BaseMicrobatchCustomUserStrategy:
 
 
 class TestMicrobatchCustomUserStrategyDefault(BaseMicrobatchCustomUserStrategy):
+    @pytest.fixture(scope="class")
+    def project_config_update(self):
+        return {
+            "flags": {
+                "require_builtin_microbatch_strategy": False,
+            }
+        }
+
     def test_use_custom_microbatch_strategy_by_default(self, project):
         with mock.patch.object(
             type(project.adapter), "valid_incremental_strategies", lambda _: []
