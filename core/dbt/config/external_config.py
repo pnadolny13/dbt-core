@@ -1,6 +1,4 @@
-from typing import Optional
-
-from dbt_config.external_config import ExternalCatalogConfig
+from typing import Dict, Optional
 
 from dbt.clients.yaml_helper import load_yaml_text
 from dbt.constants import EXTERNAL_CATALOG_FILE_NAME
@@ -19,8 +17,8 @@ def _load_yml_dict(file_path):
     return None
 
 
-def load_external_catalog_config(project_root) -> Optional[ExternalCatalogConfig]:
-    unparsed_config = _load_yml_dict(f"{project_root}/{EXTERNAL_CATALOG_FILE_NAME}")
+def load_external_catalog_config(project) -> Optional[Dict]:
+    unparsed_config = _load_yml_dict(f"{project.project_root}/{EXTERNAL_CATALOG_FILE_NAME}")
     if unparsed_config is not None:
-        return ExternalCatalogConfig.model_validate(unparsed_config)
+        return unparsed_config
     return None
