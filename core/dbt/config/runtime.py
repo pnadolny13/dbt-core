@@ -15,7 +15,7 @@ from typing import (
     Type,
 )
 
-from dbt_config.external_config import ExternalCatalogConfig
+from dbt_config.catalog_config import ExternalCatalogConfig
 
 from dbt import tracking
 from dbt.adapters.contracts.connection import (
@@ -274,7 +274,8 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
         )
         flags = get_flags()
         project = load_project(project_root, bool(flags.VERSION_CHECK), profile, cli_vars)
-        catalogs = load_external_catalog_config(project)
+        catalog_yml = load_external_catalog_config(project)
+        catalogs = ExternalCatalogConfig.model_validate(catalog_yml) if catalog_yml else None
         return project, profile, catalogs
 
     # Called in task/base.py, in BaseTask.from_args

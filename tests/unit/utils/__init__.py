@@ -11,7 +11,7 @@ from unittest import TestCase, mock
 
 import agate
 import pytest
-from dbt_config.external_config import ExternalCatalogConfig
+from dbt_config.catalog_config import ExternalCatalogConfig
 
 from dbt.config.project import PartialProject
 from dbt.config.renderer import CatalogRenderer

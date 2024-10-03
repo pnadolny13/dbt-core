@@ -1295,6 +1295,7 @@ class ProviderContext(ManifestContext):
         return {
             "Relation": self.db_wrapper.Relation,
             "Column": self.adapter.Column,
+            # "Catalog": self.adapter.Catalog,
         }
 
     @contextproperty()
