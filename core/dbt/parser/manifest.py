@@ -763,17 +763,18 @@ class ManifestLoader:
             possible_macro_calls = statically_extract_macro_calls(
                 macro.macro_sql, macro_ctx, db_wrapper
             )
-            for macro_name in possible_macro_calls:
+            for macro_call in possible_macro_calls:
                 # adapter.dispatch calls can generate a call with the same name as the macro
                 # it ought to be an adapter prefix (postgres_) or default_
-                if macro_name == macro.name:
+                if macro_call.name == macro.name:
                     continue
                 package_name = macro.package_name
-                if "." in macro_name:
-                    package_name, macro_name = macro_name.split(".")
-                dep_macro_id = self.macro_resolver.get_macro_id(package_name, macro_name)
-                if dep_macro_id:
-                    macro.depends_on.add_macro(dep_macro_id)  # will check for dupes
+                if "." in macro_call.name:
+                    package_name, macro_name = macro_call.name.split(".")
+                dep_macro = self.macro_resolver.get_macro(package_name, macro_call.name)
+                if dep_macro:
+                    macro_call.check(dep_macro)
+                    macro.depends_on.add_macro(dep_macro.unique_id)  # will check for dupes
 
     def write_manifest_for_partial_parse(self):
         path = os.path.join(self.root_project.project_target_path, PARTIAL_PARSE_FILE_NAME)
