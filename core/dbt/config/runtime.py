@@ -101,7 +101,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
     profile_name: str
     cli_vars: Dict[str, Any]
     dependencies: Optional[Mapping[str, "RuntimeConfig"]] = None
-    invocated_at: datetime = field(default_factory=lambda: datetime.now(pytz.UTC))
+    invoked_at: datetime = field(default_factory=lambda: datetime.now(pytz.UTC))
 
     def __post_init__(self):
         self.validate()
