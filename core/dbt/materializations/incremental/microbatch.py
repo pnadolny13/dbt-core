@@ -36,9 +36,7 @@ class MicrobatchBuilder:
             event_time_start.replace(tzinfo=pytz.UTC) if event_time_start else None
         )
         self.event_time_end = event_time_end.replace(tzinfo=pytz.UTC) if event_time_end else None
-        self.batch_current_time = (
-            batch_current_time if batch_current_time is not None else datetime.now(pytz.UTC)
-        )
+        self.batch_current_time = batch_current_time or datetime.now(pytz.UTC)
 
     def build_end_time(self):
         """Defaults the end_time to the current time in UTC unless a non `None` event_time_end was provided"""
