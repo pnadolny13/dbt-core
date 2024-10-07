@@ -18,7 +18,7 @@ class MicrobatchBuilder:
         is_incremental: bool,
         event_time_start: Optional[datetime],
         event_time_end: Optional[datetime],
-        batch_current_time: Optional[datetime] = None,
+        default_end_time: Optional[datetime] = None,
     ):
         if model.config.incremental_strategy != "microbatch":
             raise DbtInternalError(
@@ -36,11 +36,11 @@ class MicrobatchBuilder:
             event_time_start.replace(tzinfo=pytz.UTC) if event_time_start else None
         )
         self.event_time_end = event_time_end.replace(tzinfo=pytz.UTC) if event_time_end else None
-        self.batch_current_time = batch_current_time or datetime.now(pytz.UTC)
+        self.default_end_time = default_end_time or datetime.now(pytz.UTC)
 
     def build_end_time(self):
         """Defaults the end_time to the current time in UTC unless a non `None` event_time_end was provided"""
-        return self.event_time_end or self.batch_current_time
+        return self.event_time_end or self.default_end_time
 
     def build_start_time(self, checkpoint: Optional[datetime]):
         """Create a start time based off the passed in checkpoint.
