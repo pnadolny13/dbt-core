@@ -487,6 +487,7 @@ class ModelRunner(CompileRunner):
                 is_incremental=self._is_incremental(model),
                 event_time_start=getattr(self.config.args, "EVENT_TIME_START", None),
                 event_time_end=getattr(self.config.args, "EVENT_TIME_END", None),
+                batch_current_time=self.config.invocated_at,
             )
             end = microbatch_builder.build_end_time()
             start = microbatch_builder.build_start_time(end)
