@@ -445,11 +445,13 @@ class ManifestLoader:
             patcher.construct_sources()
             self.manifest.sources = patcher.sources
             self._perf_info.patch_sources_elapsed = time.perf_counter() - start_patch
+
+            # Get catalog.yml and update the manifest
             raw_catalog = load_external_catalog_config(self.root_project)
             if raw_catalog:
                 catalog_config = ExternalCatalogConfig.model_validate(raw_catalog)
                 self.manifest.catalogs = {
-                    c.name: c.model_dump_json() for c in catalog_config.catalogs
+                    c.name: c.model_dump_json(by_alias=True) for c in catalog_config.catalogs
                 }
             # We need to rebuild disabled in order to include disabled sources
             self.manifest.rebuild_disabled_lookup()
@@ -1151,7 +1153,7 @@ class ManifestLoader:
     def process_catalog(self, config: RuntimeConfig):
         if config.catalogs:
             for catalog in config.catalogs.catalogs:
-                self.manifest.catalogs[catalog.name] = catalog.model_dump_json()
+                self.manifest.catalogs[catalog.name] = catalog.model_dump_json(by_alias=True)
 
     def process_saved_queries(self, config: RuntimeConfig):
         """Processes SavedQuery nodes to populate their `depends_on`."""
