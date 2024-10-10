@@ -19,6 +19,7 @@ from typing import (
 from typing_extensions import Protocol
 
 from dbt import selected_resources
+from dbt.adapters.base.catalog import ExternalCatalogIntegrations
 from dbt.adapters.base.column import Column
 from dbt.adapters.base.relation import EventTimeFilter
 from dbt.adapters.contracts.connection import AdapterResponse
@@ -898,6 +899,9 @@ class ProviderContext(ManifestContext):
         self.context_config: Optional[ContextConfig] = context_config
         self.provider: Provider = provider
         self.adapter = get_adapter(self.config)
+        self.catalog_integrations = ExternalCatalogIntegrations.from_json_strings(
+            self.manifest.catalogs.values(), self.adapter.ExternalCatalogIntegration
+        )
         # The macro namespace is used in creating the DatabaseWrapper
         self.db_wrapper = self.provider.DatabaseWrapper(self.adapter, self.namespace)
 
@@ -1295,7 +1299,7 @@ class ProviderContext(ManifestContext):
         return {
             "Relation": self.db_wrapper.Relation,
             "Column": self.adapter.Column,
-            # "Catalog": self.adapter.Catalog,
+            "catalogs": self.catalog_integrations,
         }
 
     @contextproperty()
