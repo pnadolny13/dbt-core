@@ -96,8 +96,7 @@ REQUIRED_PARSED_NODE_KEYS = frozenset(
         "deprecation_date",
         "defer_relation",
         "time_spine",
-        "batches",
-        "vars",
+        "batch_info",
     }
 )
 
