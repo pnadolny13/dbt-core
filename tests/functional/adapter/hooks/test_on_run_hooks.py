@@ -49,6 +49,9 @@ class Test__StartHookFail__FlagIsNone__ModelFail:
         ]
 
         assert [(result.node.unique_id, result.status) for result in results] == expected_results
+        assert [
+            (result.node.unique_id, result.node.node_info["node_status"]) for result in results
+        ] == [(id, str(status)) for id, status in expected_results]
         assert log_counts in log_output
         assert "4 project hooks, 1 view model" in log_output
 

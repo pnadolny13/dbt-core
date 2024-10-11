@@ -669,6 +669,8 @@ class RunTask(CompileTask):
                     status = RunStatus.Skipped
                     message = f"{hook_name} skipped"
 
+                hook.update_event_status(node_status=status)
+
                 self.node_results.append(
                     RunResult(
                         status=status,
