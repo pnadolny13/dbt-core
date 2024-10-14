@@ -3,7 +3,9 @@ import time
 from abc import abstractmethod
 from concurrent.futures import as_completed
 from datetime import datetime
-from multiprocessing.dummy import Pool as ThreadPool
+from concurrent.futures import ThreadPoolExecutor
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import AbstractSet, Optional, Dict, List, Set, Tuple, Iterable
 
@@ -392,40 +394,39 @@ class GraphRunnableTask(ConfiguredTask):
         with TextOnly():
             fire_event(Formatting(""))
 
-        pool = ThreadPool(num_threads, self._pool_thread_initializer, [get_invocation_context()])
-        try:
-            self.run_queue(pool)
-        except FailFastError as failure:
-            self._cancel_connections(pool)
+        with ThreadPoolExecutor(max_workers=num_threads, initializer=self._pool_thread_initializer, initargs=[get_invocation_context()]) as pool:
+            try:
+                self.run_queue(pool)
+            except FailFastError as failure:
+                self._cancel_connections(pool)
 
-            executed_node_ids = [r.node.unique_id for r in self.node_results]
+                executed_node_ids = [r.node.unique_id for r in self.node_results]
 
-            for r in self._flattened_nodes:
-                if r.unique_id not in executed_node_ids:
-                    self.node_results.append(
-                        RunResult.from_node(r, RunStatus.Skipped, "Skipping due to fail_fast")
-                    )
+                for r in self._flattened_nodes:
+                    if r.unique_id not in executed_node_ids:
+                        self.node_results.append(
+                            RunResult.from_node(r, RunStatus.Skipped, "Skipping due to fail_fast")
+                        )
 
-            print_run_result_error(failure.result)
-            # ensure information about all nodes is propagated to run results when failing fast
-            return self.node_results
-        except (KeyboardInterrupt, SystemExit):
-            run_result = self.get_result(
-                results=self.node_results,
-                elapsed_time=time.time() - self.started_at,
-                generated_at=datetime.utcnow(),
-            )
+                print_run_result_error(failure.result)
+                # ensure information about all nodes is propagated to run results when failing fast
+                return self.node_results
+            except (KeyboardInterrupt, SystemExit):
+                run_result = self.get_result(
+                    results=self.node_results,
+                    elapsed_time=time.time() - self.started_at,
+                    generated_at=datetime.utcnow(),
+                )
 
-            if self.args.write_json and hasattr(run_result, "write"):
-                run_result.write(self.result_path())
+                if self.args.write_json and hasattr(run_result, "write"):
+                    run_result.write(self.result_path())
 
-            self._cancel_connections(pool)
-            print_run_end_messages(self.node_results, keyboard_interrupt=True)
+                self._cancel_connections(pool)
+                print_run_end_messages(self.node_results, keyboard_interrupt=True)
 
-            raise
+                raise
 
-        pool.close()
-        pool.join()
+            # The executor is automatically closed and joined when exiting the 'with' block
 
         return self.node_results
 
