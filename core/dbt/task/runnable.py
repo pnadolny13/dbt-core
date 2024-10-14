@@ -282,7 +282,8 @@ class GraphRunnableTask(ConfiguredTask):
         if self.config.args.single_threaded:
             callback(self.call_runner(*args))
         else:
-            pool.apply_async(self.call_runner, args=args, callback=callback)
+            future = pool.submit(self.call_runner, *args)
+            future.add_done_callback(lambda f: callback(f.result()))
 
     def _raise_set_error(self):
         if self._raise_next_tick is not None:
